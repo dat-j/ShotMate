@@ -61,7 +61,9 @@ void main() {
     test('subject đúng giao điểm thirds → không hint, score cao', () {
       final state = engine.evaluate(frame(
         horizon: 0,
-        box: const SubjectBox(left: 0.23, top: 0.23, width: 0.2, height: 0.2),
+        // Center đúng giao điểm (1/3, 1/3) và area 16% (trong "vùng đẹp"
+        // 15–60%) — well-composed shot, không chỉ đúng vị trí mà còn đúng size.
+        box: const SubjectBox(left: 0.1333, top: 0.1333, width: 0.4, height: 0.4),
       ));
       expect(state.hints.where((h) => h.id == 'thirds_offset'), isEmpty);
       expect(state.compositionScore, greaterThanOrEqualTo(80));

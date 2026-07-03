@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../coach/application/coach_state_provider.dart';
 import 'coach_overlay.dart';
 
@@ -24,7 +25,7 @@ class CameraScreen extends ConsumerWidget {
         children: [
           // TODO(sprint-1): CameraPreview(controller)
           const ColoredBox(
-            color: Color(0xFF101418),
+            color: AppColors.cameraPlaceholder,
             child: Center(
               child: Text(
                 '📷 Camera preview\n(native module — Sprint 1)',

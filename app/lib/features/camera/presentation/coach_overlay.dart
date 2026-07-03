@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../coach/domain/coach_hint.dart';
 
 /// Overlay guidance trên camera preview (spec FR-S1-4):
@@ -48,7 +49,7 @@ class _ThirdsGridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white24
+      ..color = AppColors.gridLine
       ..strokeWidth = 1;
     for (final f in [1 / 3, 2 / 3]) {
       canvas.drawLine(
@@ -75,7 +76,7 @@ class _RatingStars extends StatelessWidget {
         for (var i = 1; i <= 5; i++)
           Icon(
             i <= stars ? Icons.star : Icons.star_border,
-            color: Colors.amber,
+            color: AppColors.ratingStar,
             size: 22,
           ),
       ],
@@ -107,7 +108,7 @@ class _HintChip extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: isCritical ? Colors.red.withValues(alpha: 0.85) : Colors.black54,
+        color: isCritical ? AppColors.hintCritical : AppColors.hintDefault,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
