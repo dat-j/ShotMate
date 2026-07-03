@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/camera/presentation/camera_screen.dart';
 import '../../features/history/presentation/history_screen.dart';
 import '../../features/score/presentation/score_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
 
 /// Routes theo spec-sprint-1 "Frontend Changes".
 final appRouter = GoRouter(
@@ -14,5 +15,6 @@ final appRouter = GoRouter(
           ScoreScreen(photoId: state.pathParameters['photoId']!),
     ),
     GoRoute(path: '/history', builder: (_, __) => const HistoryScreen()),
+    GoRoute(path: '/settings', builder: (_, __) => const SettingsScreen()),
   ],
 );

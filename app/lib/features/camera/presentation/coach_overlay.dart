@@ -5,10 +5,26 @@ import '../../coach/domain/coach_hint.dart';
 
 /// Overlay guidance trên camera preview (spec FR-S1-4):
 /// grid rule-of-thirds, tối đa 2 hint, rating sao. Hint fade 150ms.
+///
+/// [showGrid]/[showSkeleton] đến từ settings toggles (spec FR-S1-4:
+/// "grid ... bật/tắt được", "skeleton dots ... toggle trong settings") —
+/// xem `settings_providers.dart`.
 class CoachOverlay extends StatelessWidget {
-  const CoachOverlay({super.key, required this.state});
+  const CoachOverlay({
+    super.key,
+    required this.state,
+    this.showGrid = true,
+    this.showSkeleton = false,
+    this.poseLandmarks,
+  });
 
   final CoachState state;
+  final bool showGrid;
+  final bool showSkeleton;
+
+  /// 33 điểm MediaPipe [x,y] normalized — từ `FrameAnalysis.poseLandmarks`
+  /// (raw stream, không qua rule engine). Null nếu không detect được người.
+  final List<List<double>>? poseLandmarks;
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +32,9 @@ class CoachOverlay extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CustomPaint(painter: _ThirdsGridPainter()),
+          if (showGrid) CustomPaint(painter: _ThirdsGridPainter()),
+          if (showSkeleton && poseLandmarks != null)
+            CustomPaint(painter: _SkeletonPainter(poseLandmarks!)),
           SafeArea(
             child: Column(
               children: [
@@ -61,6 +79,32 @@ class _ThirdsGridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Debug visualization: chấm tại mỗi pose landmark (spec FR-S1-4: "skeleton
+/// dots khi detect được người"). Vẽ điểm thô, không nối xương — đủ để xác
+/// nhận detector hoạt động, không phải sản phẩm cuối.
+class _SkeletonPainter extends CustomPainter {
+  _SkeletonPainter(this.landmarks);
+
+  final List<List<double>> landmarks;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = AppColors.ratingStar;
+    for (final point in landmarks) {
+      if (point.length < 2) continue;
+      canvas.drawCircle(
+        Offset(point[0] * size.width, point[1] * size.height),
+        3,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SkeletonPainter oldDelegate) =>
+      oldDelegate.landmarks != landmarks;
 }
 
 class _RatingStars extends StatelessWidget {

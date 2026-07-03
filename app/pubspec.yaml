@@ -20,6 +20,7 @@ dependencies:
 
   # Camera preview/capture — analysis chạy ở native module (ADR-0001)
   camera: ^0.11.0
+  permission_handler: ^12.0.1
 
   # Local storage (ADR-0005)
   drift: ^2.22.0
