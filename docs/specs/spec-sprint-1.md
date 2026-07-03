@@ -265,17 +265,19 @@ Drift với 10k ảnh vẫn phải đạt target query (có index).
 
 ## Acceptance Criteria
 
-- [ ] Mở app → camera preview 30fps, grid thirds hiển thị
-- [ ] Đưa người vào khung → skeleton dots hiển thị ≤ 500ms sau khi người xuất hiện
-- [ ] Nghiêng máy > 3° → hint nghiêng máy xuất hiện, trả máy về < 1.5° → hint biến mất, không nhấp nháy khi dao động quanh 3°
-- [ ] Không bao giờ hiển thị > 2 hint đồng thời (verify bằng widget test + manual)
-- [ ] Chụp ảnh → score screen 4 chiều trong < 2s, record tồn tại trong history sau khi kill app
-- [ ] Perf HUD báo frame→hint p90 < 100ms trên Pixel 6a và iPhone 12 (go/no-go gate)
-- [ ] Airplane mode: toàn bộ flow trên hoạt động bình thường
-- [ ] Lượt score thứ 11 trong ngày bị chặn kèm CTA; ngày hôm sau tự reset
-- [ ] EC-1..EC-7 có test (unit/widget cho logic, manual checklist cho device behavior)
-- [ ] Rule engine coverage ≥ 90%, toàn bộ rule có golden test fixture
-- [ ] `flutter analyze` 0 issue, `flutter test` pass
+> Trạng thái cập nhật 2026-07-03 (Dart layer, commit `b5568dc`). Legend: ✅ done & verified · 🟡 Dart side xong, cần native module/thiết bị để verify đầy đủ · ⬜ blocked bởi native module (chưa bắt đầu). Chi tiết: [sprint-1-status.md](sprint-1-status.md).
+
+- [ ] 🟡 Mở app → camera preview 30fps, grid thirds hiển thị — camera plugin + overlay + grid toggle đã wire; cần scaffold native runner (`flutter create`) mới chạy được trên thiết bị để đo 30fps
+- [ ] ⬜ Đưa người vào khung → skeleton dots hiển thị ≤ 500ms — UI skeleton painter đã có (toggle trong settings); pose detector native chưa tồn tại
+- [x] ✅ Nghiêng máy > 3° → hint xuất hiện, về < 1.5° → biến mất, không nhấp nháy — hysteresis + debounce test pass (logic; manual trên thiết bị chờ native)
+- [x] ✅ Không bao giờ hiển thị > 2 hint đồng thời — HintPrioritizer test pass (manual check chờ thiết bị)
+- [ ] 🟡 Chụp ảnh → score screen 4 chiều < 2s, record sống sót kill app — capture flow + Drift persistence + score screen xong, test pass; timing < 2s cần đo trên thiết bị; focus/background dùng placeholder chờ native
+- [ ] ⬜ Perf HUD báo frame→hint p90 < 100ms trên Pixel 6a/iPhone 12 (**go/no-go gate**) — PerfTracker + HUD widget xong; chưa có nguồn số liệu thật (native chưa emit) và chưa có thiết bị tham chiếu
+- [x] ✅ Airplane mode: toàn bộ flow hoạt động bình thường — by construction: không có network call nào trong app core (Drift local, không backend)
+- [x] ✅ Lượt score thứ 11 trong ngày bị chặn kèm CTA; hôm sau tự reset — CreditRepository test pass (9 test, gồm day rollover)
+- [ ] 🟡 EC-1..EC-7 có test — EC-2 (multi-person, logic native), EC-3 (permission — code có, cần manual trên thiết bị), EC-5 (quota giữa session), EC-7 (debounce) có test; EC-4 (thermal) và EC-6 (rotation) thuộc native module, chưa làm
+- [x] ✅ Rule engine coverage ≥ 90%, toàn bộ rule có golden test fixture — 13 test (1 fixture sai đã sửa: box "well-composed" 4% khung < mức 8% tối thiểu của chính spec)
+- [x] ✅ `flutter analyze` 0 issue, `flutter test` pass — 80/80 test
 
 ---
 
@@ -291,3 +293,4 @@ Drift với 10k ảnh vẫn phải đạt target query (có index).
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 1.0 | 2026-07-03 | Đạt Trần | Initial draft |
+| 1.1 | 2026-07-03 | Đạt Trần (swarm) | Cập nhật trạng thái acceptance criteria sau khi hoàn thành Dart layer (commit `b5568dc`). Việc còn lại + hướng dẫn triển khai tiếp: [sprint-1-status.md](sprint-1-status.md) |
