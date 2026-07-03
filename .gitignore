@@ -1,0 +1,33 @@
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+coverage/
+*.log
+
+# Flutter/Dart
+app/.dart_tool/
+app/build/
+app/.flutter-plugins*
+app/.packages
+app/pubspec.lock
+app/**/*.g.dart
+app/**/*.freezed.dart
+app/ios/Pods/
+app/android/.gradle/
+app/android/local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+
+# TS build cache
+*.tsbuildinfo

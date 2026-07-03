@@ -1,0 +1,136 @@
+// ShotMate server schema (Sprint 3) — mirror ERD trong
+// docs/design/system-design-shotmate.md §6. Local Drift schema (app) là subset;
+// id là UUID sinh tại client (ADR-0002) — server KHÔNG cấp lại id cho
+// photo/analysis khi sync.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
+  email       String   @unique
+  displayName String?  @map("display_name")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  subscription Subscription?
+  devices      Device[]
+  photos       Photo[]
+  credits      Credit[]
+  feedbacks    Feedback[]
+
+  @@map("users")
+}
+
+model Subscription {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @unique @map("user_id") @db.Uuid
+  plan       String    @default("free") // free | premium
+  store      String? // apple | google
+  receiptRef String?   @map("receipt_ref")
+  expiresAt  DateTime? @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Device {
+  id         String  @id @default(uuid()) @db.Uuid
+  userId     String? @map("user_id") @db.Uuid // null = anonymous truoc khi login
+  platform   String // ios | android
+  model      String?
+  appVersion String? @map("app_version")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("devices")
+}
+
+model Photo {
+  id          String    @id @db.Uuid // UUID sinh tai client — KHONG default
+  userId      String    @map("user_id") @db.Uuid
+  storagePath String?   @map("storage_path") // GCS; null neu chi local
+  sceneType   String?   @map("scene_type") // landscape | portrait | food
+  captureMeta Json      @map("capture_meta") // zoom, tilt, hints_shown
+  takenAt     DateTime  @map("taken_at")
+
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyses Analysis[]
+
+  @@index([userId, takenAt(sort: Desc)])
+  @@map("photos")
+}
+
+model Analysis {
+  id        String   @id @db.Uuid // UUID client-side cho on_device, server-side cho cloud
+  photoId   String   @map("photo_id") @db.Uuid
+  kind      String // on_device | cloud
+  provider  String // rules | claude | gemini
+  status    String   @default("done") // queued | processing | done | failed
+  result    Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  photo Photo  @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  score Score?
+  poses Pose[]
+
+  @@index([photoId])
+  @@map("analyses")
+}
+
+model Score {
+  id          String @id @default(uuid()) @db.Uuid
+  analysisId  String @unique @map("analysis_id") @db.Uuid
+  composition Int
+  lighting    Int
+  focus       Int
+  background  Int
+
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@map("scores")
+}
+
+model Pose {
+  id           String @id @default(uuid()) @db.Uuid
+  analysisId   String @map("analysis_id") @db.Uuid
+  landmarks    Json // 33 points normalized
+  hintsApplied Json?  @map("hints_applied")
+
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+
+  @@map("poses")
+}
+
+model Credit {
+  id     String   @id @default(uuid()) @db.Uuid
+  userId String   @map("user_id") @db.Uuid
+  day    DateTime @db.Date
+  used   Int      @default(0)
+  quota  Int      @default(10) // -1 = unlimited (premium)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day])
+  @@map("credits")
+}
+
+model Feedback {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  targetKind String   @map("target_kind") // hint | score | review
+  targetRef  String   @map("target_ref")
+  rating     Int // 1 up, -1 down
+  comment    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("feedbacks")
+}

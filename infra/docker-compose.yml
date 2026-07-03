@@ -1,0 +1,72 @@
+# Local dev stack (System Design §9 — môi trường Local).
+# Chạy: docker compose -f infra/docker-compose.yml up -d
+name: shotmate
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: shotmate
+      POSTGRES_PASSWORD: shotmate
+      POSTGRES_DB: shotmate
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shotmate"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Giả lập GCS cho local (signed URL upload)
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: shotmate
+      MINIO_ROOT_PASSWORD: shotmate-local
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+
+  # Bắt email magic link local — UI: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  backend:
+    build:
+      context: ../backend
+    env_file:
+      - ../backend/.env
+    environment:
+      DATABASE_URL: postgresql://shotmate:shotmate@postgres:5432/shotmate
+      REDIS_URL: redis://redis:6379
+      SMTP_HOST: mailpit
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    profiles: ["full"] # `--profile full` khi cần chạy backend trong docker
+
+volumes:
+  pgdata:
+  miniodata:
