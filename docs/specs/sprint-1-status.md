@@ -1,4 +1,4 @@
-# Sprint 1 — Status & Handoff (Dart layer + native runner done)
+# Sprint 1 — Status & Handoff (Dart layer + native runner + Android inference done)
 
 <!--
 Sprint Status / Handoff Note
@@ -10,9 +10,9 @@ Related: spec-sprint-1.md (spec gốc), roadmap.md (Phase 1)
 
 ## Metadata
 
-**Date:** 2026-07-06 (cập nhật: scaffold native runner)
-**Commit:** `b5568dc` (Dart layer, đã push) · `d839b03` (native runner + camera permissions — **local, chưa push**, xem §3)
-**Quality gate:** `flutter analyze` 0 issue · `flutter test` 80/80 pass · debug APK build + chạy trên thiết bị thật OK
+**Date:** 2026-07-06 (cập nhật: native inference module Android)
+**Commit:** `b5568dc` (Dart layer) · `d839b03` (native runner) · `874e736` (docs) · +native module Android (xem §2.2) — các commit sau `b5568dc` **local, chưa push**, xem §3
+**Quality gate:** `flutter analyze` 0 issue · `flutter test` 80/80 pass · debug APK build + native inference pipeline chạy trên thiết bị thật (Android 16) OK
 
 ---
 
@@ -60,19 +60,32 @@ Related: spec-sprint-1.md (spec gốc), roadmap.md (Phase 1)
 
 **Còn nợ:** smoke test bằng tay full flow (preview → chụp → score → history) — cần thao tác UI trên máy; scaffold + camera-init đã pass.
 
-### 2.2. Native Inference Module (FR-S1-2) — khối lượng lớn nhất còn lại
+### 2.2. Native Inference Module (FR-S1-2)
 
-Contract đã chốt trong `app/{android,ios}/NATIVE_MODULE.md` và `frame_analysis.dart` (source of truth, schemaVersion 1):
+Contract: `app/{android,ios}/NATIVE_MODULE.md` + `frame_analysis.dart` (source of truth, schemaVersion 1).
 
-- **Android (Kotlin):** CameraX ImageAnalysis + MediaPipe pose_landmarker_lite (15fps, GPU delegate) + ML Kit ODT (5fps) + exposure sampler (5fps) → EventChannel `shotmate/frame_analysis`
-- **iOS (Swift):** AVCaptureVideoDataOutput + cùng detector stack
-- Detector Scheduler + thermal throttling (EC-4), rotation handling (EC-6)
-- Sharpness (Laplacian variance) + background edge density ngay sau capture → thay 2 placeholder trong `capture_orchestrator.dart` (đã đánh dấu TODO)
-- Emit `inferenceLatencyMs` per-detector → feed `PerfTracker` (điểm nối đã có sẵn, xem comment trong `perf_hud.dart`)
+**Android (Kotlin) — ✅ XONG (2026-07-06), verify trên thiết bị thật:**
+
+Files: `android/app/src/main/kotlin/com/shotmate/shotmate_app/inference/` — `FrameAnalysisController` (điều phối + sở hữu camera), `PoseDetectorWrapper` (MediaPipe), `ExposureSampler`, `HorizonSensor`, `DetectorScheduler`, `FrameAnalysisPayload`, `CameraPreviewView` (PlatformView).
+
+- CameraX bind **Preview + ImageAnalysis + ImageCapture một owner** (ADR-0007 — giải xung đột với `camera` plugin). KHÔNG startImageStream.
+- MediaPipe pose_landmarker_lite LIVE_STREAM, **GPU delegate** (fallback CPU), 15fps → 33 landmark + subjectBox
+- ML Kit face detection (5fps) làm subject fallback; exposure sampler (mean luma + clipping, subsample Y-plane) 5fps
+- Horizon từ accelerometer (gravity vector); Detector Scheduler throttle theo fps; thermal ≥ SEVERE → hạ nhịp + tắt exposure + `throttled:true` (EC-4); rotation handling (EC-6)
+- Serialize `FrameAnalysis` (schemaVersion 1, no pixel — BR-3) + `inferenceLatencyMs` per-detector → EventChannel `shotmate/frame_analysis`
+- **Verify:** `PoseLandmarker init OK (delegate=GPU)`; `preview + analysis + capture now ATTACHED`; preview render + coach overlay (grid + rating sao) chạy trên payload native; chụp ảnh OK; không crash. `flutter analyze` 0 · `test` 80/80.
+
+**Dart wiring (Android):** `core/platform/native_camera.dart` (PlatformView preview + MethodChannel capture); CameraScreen rẽ nhánh `NativeCamera.isSupported` (Android native / iOS plugin fallback).
+
+**Còn nợ trong 2.2:**
+
+- [ ] Sharpness (Laplacian variance) + background edge density ngay sau capture → vẫn là placeholder trong `capture_orchestrator.dart` (native chưa tính lúc chụp; cần channel trả 2 giá trị này từ ImageCapture)
+- [ ] `inferenceLatencyMs` đã emit trong payload nhưng **chưa feed vào `PerfTracker`** (điểm nối phía Dart chưa nối — xem comment `perf_hud.dart`)
+- [ ] **iOS (Swift):** chưa bắt đầu — AVCaptureVideoDataOutput + cùng detector stack + PlatformView/capture channel tương đương (ADR-0007). Android là tham chiếu.
 
 ### 2.3. Benchmark gate <100ms p90 (go/no-go — deadline roadmap: 2026-07-11)
 
-Cần 2.1 + 2.2 xong + thiết bị tham chiếu (Pixel 6a / iPhone 12 — **chưa xác nhận có máy**, xem Open Questions trong spec). Perf HUD đã sẵn sàng đo.
+Android pipeline đã chạy; cần: nối `inferenceLatencyMs` → PerfTracker (2.2), thiết bị tham chiếu (Pixel 6a / iPhone 12 — **chưa xác nhận**, xem Open Questions), và đo p90 thực. Lưu ý ADR-0007: PlatformView preview có thể thêm chi phí compositing — cần đo. Perf HUD đã sẵn sàng.
 
 ### 2.4. Việc nhỏ còn nợ
 

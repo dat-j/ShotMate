@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/platform/frame_analysis_channel.dart';
+import '../../../core/platform/native_camera.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../coach/application/coach_state_provider.dart';
 import '../../coach/domain/coach_hint.dart';
@@ -36,6 +37,11 @@ class CameraScreen extends ConsumerStatefulWidget {
 
 class _CameraScreenState extends ConsumerState<CameraScreen>
     with WidgetsBindingObserver {
+  /// Android: camera do native module sở hữu (preview PlatformView + capture
+  /// MethodChannel). iOS/khác: `camera` plugin (chưa có native module).
+  final bool _useNative = NativeCamera.isSupported;
+  final NativeCamera _nativeCamera = const NativeCamera();
+
   CameraController? _controller;
   CameraPermissionStatus _permissionStatus = CameraPermissionStatus.unknown;
   final _captureDebouncer = CaptureDebouncer();
@@ -58,6 +64,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Native path: vòng đời camera gắn với PlatformView (native lo start/stop).
+    if (_useNative) return;
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
     if (state == AppLifecycleState.inactive) {
@@ -74,7 +82,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
     if (status.isGranted) {
       setState(() => _permissionStatus = CameraPermissionStatus.granted);
-      await _initCamera();
+      if (!_useNative) await _initCamera();
       return;
     }
     setState(() {
@@ -116,14 +124,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _onShutterPressed() async {
-    final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) return;
     if (!_captureDebouncer.tryStart()) return; // EC-7: debounce
 
     setState(() => _capturing = true);
     try {
-      final xFile = await controller.takePicture();
-      final savedPath = await _saveToAppPrivateStorage(xFile);
+      final savedPath = await _capturePhotoToDisk();
+      if (savedPath == null) return; // native capture lỗi → không navigate
 
       final coachState = ref.read(coachStateProvider);
       final analysis = ref.read(frameAnalysisStreamProvider).valueOrNull;
@@ -144,6 +150,25 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
+  /// Chụp và lưu vào app-private storage; trả đường dẫn hoặc null nếu lỗi.
+  Future<String?> _capturePhotoToDisk() async {
+    if (_useNative) {
+      final destPath = await _appPrivatePhotoPath();
+      try {
+        await _nativeCamera.capture(destPath);
+        return destPath;
+      } on CameraCaptureException catch (e) {
+        if (mounted) setState(() => _initError = e.message);
+        return null;
+      }
+    }
+
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return null;
+    final xFile = await controller.takePicture();
+    return _saveToAppPrivateStorage(xFile);
+  }
+
   Map<String, Object?> _captureMeta(CoachState state) {
     return {
       'compositionScore': state.compositionScore,
@@ -151,16 +176,20 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     };
   }
 
-  Future<String> _saveToAppPrivateStorage(XFile xFile) async {
-    // App-private picture directory (spec-sprint-1: "gallery app-private") —
-    // KHÔNG lưu vào OS Photos/gallery công khai.
+  /// Đường dẫn đích mới trong app-private picture dir (spec-sprint-1:
+  /// "gallery app-private" — KHÔNG lưu vào OS Photos/gallery công khai).
+  Future<String> _appPrivatePhotoPath() async {
     final dir = await getApplicationDocumentsDirectory();
     final picturesDir = Directory(p.join(dir.path, 'photos'));
     if (!picturesDir.existsSync()) {
       picturesDir.createSync(recursive: true);
     }
     final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final destPath = p.join(picturesDir.path, fileName);
+    return p.join(picturesDir.path, fileName);
+  }
+
+  Future<String> _saveToAppPrivateStorage(XFile xFile) async {
+    final destPath = await _appPrivatePhotoPath();
     await File(xFile.path).copy(destPath);
     return destPath;
   }
@@ -185,8 +214,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       return _CameraErrorScreen(error: _initError!, onRetry: _initCamera);
     }
 
+    // Path plugin (iOS): chờ controller sẵn sàng. Path native (Android): preview
+    // là PlatformView, không cần CameraController.
     final controller = _controller;
-    if (controller == null || !controller.value.isInitialized) {
+    if (!_useNative && (controller == null || !controller.value.isInitialized)) {
       return const _LoadingScreen();
     }
 
@@ -201,7 +232,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          CameraPreview(controller),
+          if (_useNative)
+            const NativeCameraPreview()
+          else
+            CameraPreview(controller!),
           CoachOverlay(
             state: coachState,
             showGrid: showGrid,

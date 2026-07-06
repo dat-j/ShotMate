@@ -32,11 +32,11 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 ### Phase 1: Sprint 1 — Foundation (Camera + Composition + Score)
 
 **Timeline:** 2026-07-07 → 2026-07-18
-**Status:** In Progress — Dart layer hoàn thành 2026-07-03 (commit `b5568dc`); native runner scaffold + camera permissions 2026-07-06 (commit `d839b03`, chạy trên thiết bị thật không crash); còn native inference module + benchmark gate
+**Status:** In Progress — Dart layer (`b5568dc`) + native runner (`d839b03`) + **native inference module Android** (2026-07-06, verify trên thiết bị thật) xong; còn iOS native module + nối perf + benchmark gate
 
 **Deliverables:** (chi tiết: [spec-sprint-1.md](specs/spec-sprint-1.md), tiến độ: [sprint-1-status.md](specs/sprint-1-status.md))
-- [x] Camera preview + overlay framework (grid, hints, rating) — Dart side xong; native runner đã scaffold (`flutter create`), cài + chạy trên thiết bị thật (Android 16)
-- [ ] Native inference module: MediaPipe pose + composition analyzer + exposure sampler — **chưa bắt đầu** (runner đã có sau `d839b03`; giờ implement trong `android/app/src/main/kotlin/` + `ios/Runner/` theo NATIVE_MODULE.md)
+- [x] Camera preview + overlay framework (grid, hints, rating) — chạy trên native preview (Android, ADR-0007) trên thiết bị thật
+- [x] Native inference module **Android**: CameraX + MediaPipe pose (GPU) + ML Kit face + exposure sampler + horizon + thermal/rotation → EventChannel. Verify trên Android 16. **iOS chưa bắt đầu** (Android là tham chiếu). Xem ADR-0007 (native sở hữu camera).
 - [x] Rule engine v0 (horizon, thirds, subject size/cut) + HintPrioritizer — 13 golden test
 - [x] Photo Score cơ bản 4 chiều (offline) + History (Drift) + Credit tracker — focus/background dùng placeholder chờ native detector
 - [ ] Perf HUD + **benchmark gate <100ms (go/no-go)** — HUD + PerfTracker (p50/p90 sliding window) đã dựng xong phía Dart; gate chỉ đo được khi có native module + thiết bị tham chiếu
@@ -108,7 +108,7 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 | Milestone | Target Date | Status | Notes |
 |-----------|-------------|--------|-------|
 | Benchmark gate pass (<100ms) | 2026-07-11 | Pending | Go/no-go của cả sản phẩm — blocked bởi native module (chưa bắt đầu) |
-| Sprint 1 done — app coach được composition | 2026-07-18 | In Progress | Dart layer xong 2026-07-03; runner + chạy thiết bị thật xong 2026-07-06; còn native inference module |
+| Sprint 1 done — app coach được composition | 2026-07-18 | In Progress | Dart layer + runner + native inference **Android** xong 2026-07-06 (verify thiết bị thật); còn iOS module + nối perf + benchmark |
 | Sprint 2 done — full coaching offline | 2026-08-01 | Pending | Airplane-mode demo được toàn bộ |
 | Beta launch (TestFlight + Internal) | 2026-08-15 | Pending | |
 | Public launch quyết định sau beta | TBD | Pending | Dựa trên D7 retention + feedback |
@@ -190,3 +190,4 @@ Phase 1 ──────→ Phase 2 ──────→ Phase 3 ────
 | 2026-07-03 | Đạt Trần | Initial roadmap |
 | 2026-07-03 | Đạt Trần (swarm) | Sprint 1 Dart layer done (commit `b5568dc`): rule engine, PhotoScorer, Drift, capture flow, 4 màn hình, Perf HUD scaffolding — 80/80 test. Phase 1 → In Progress; còn native module + benchmark gate. Chi tiết: [sprint-1-status.md](specs/sprint-1-status.md) |
 | 2026-07-06 | Đạt Trần (swarm) | Scaffold native runner + camera permissions (commit `d839b03`, local — chưa push): `flutter create` android/ios, CAMERA/minSdk 24 (Android), NSCameraUsageDescription (iOS). Debug APK build + cài + chạy trên thiết bị thật (Android 16) không crash, camera plugin init OK. Mở khoá bước native inference module. |
+| 2026-07-06 | Đạt Trần (swarm) | **Native inference module Android** (local — chưa push): CameraX (Preview+Analysis+Capture một owner) + MediaPipe pose GPU + ML Kit face + exposure sampler + horizon + thermal/rotation → EventChannel; Dart PlatformView preview + capture channel; **ADR-0007** (native sở hữu camera, giải xung đột với `camera` plugin). Verify thiết bị thật: preview + overlay chạy trên payload native, chụp OK, no crash. analyze 0 · test 80/80. iOS module còn nợ. |

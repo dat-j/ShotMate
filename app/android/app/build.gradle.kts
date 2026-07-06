@@ -36,6 +36,27 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // MediaPipe .task model là zip nén sẵn — không cho aapt nén lại (load fail nếu nén)
+    androidResources {
+        noCompress += "task"
+    }
+}
+
+dependencies {
+    // CameraX — ImageAnalysis pipeline (ADR-0001: KHÔNG dùng startImageStream)
+    val cameraxVersion = "1.3.4"
+    implementation("androidx.camera:camera-core:$cameraxVersion")
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
+
+    // MediaPipe Tasks Vision — pose_landmarker_lite (GPU delegate)
+    implementation("com.google.mediapipe:tasks-vision:0.10.14")
+
+    // ML Kit — object detection (subject fallback) + face detection
+    implementation("com.google.mlkit:object-detection:17.0.2")
+    implementation("com.google.mlkit:face-detection:16.1.7")
 }
 
 flutter {
