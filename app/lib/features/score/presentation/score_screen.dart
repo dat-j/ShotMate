@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -63,6 +64,66 @@ class _ScoreScreenBody extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xl),
           if (score == null) const _QuotaExhaustedNotice() else _ScoreBreakdown(score: score!),
+          if (score != null) _WhySection(captureMeta: photo.captureMeta),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Vì sao" (spec-sprint-2 FR-S2-7): các hint app đã hiển thị tại thời điểm
+/// chụp — đọc từ `captureMeta.hintsShown` (đã lưu từ Sprint 1). Không tính
+/// lại, chỉ trình bày. Ẩn nếu không có hint (ảnh đã tốt).
+class _WhySection extends StatelessWidget {
+  const _WhySection({required this.captureMeta});
+
+  final String captureMeta;
+
+  static const _labels = {
+    'horizon_tilt': 'Đường chân trời bị nghiêng',
+    'thirds_offset': 'Chủ thể lệch điểm mạnh (rule-of-thirds)',
+    'subject_too_small': 'Chủ thể hơi nhỏ trong khung',
+    'subject_cut': 'Chủ thể bị cắt ở mép khung',
+    'raise_chin': 'Nên nâng cằm người được chụp',
+    'smile': 'Người được chụp chưa cười',
+    'too_close': 'Máy hơi gần chủ thể',
+    'too_far': 'Máy hơi xa chủ thể',
+    'tilt_angle': 'Góc máy chưa hợp với cảnh',
+  };
+
+  List<String> _hintsShown() {
+    try {
+      final meta = jsonDecode(captureMeta) as Map<String, Object?>;
+      final ids = (meta['hintsShown'] as List<Object?>?) ?? const [];
+      return ids.map((e) => e.toString()).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hints = _hintsShown();
+    if (hints.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Có thể cải thiện',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppSpacing.sm),
+          for (final id in hints)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.chevron_right, size: 20),
+                  Expanded(child: Text(_labels[id] ?? id)),
+                ],
+              ),
+            ),
         ],
       ),
     );

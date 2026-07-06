@@ -95,6 +95,7 @@ class FrameAnalysis {
     this.pitchDeg,
     this.zoomRatio = 1,
     this.verticalFovDeg,
+    this.throttled = false,
   });
 
   static const supportedSchemaVersion = 2;
@@ -140,6 +141,9 @@ class FrameAnalysis {
   /// Null nếu thiết bị không cung cấp (rule distance tự tắt — FR-S2-4).
   final double? verticalFovDeg;
 
+  /// Thiết bị đang throttle vì nhiệt (EC-4) — UI hiện icon tiết kiệm.
+  final bool throttled;
+
   /// Parse payload từ EventChannel. Trả null nếu schema không khớp
   /// hoặc dữ liệu ngoài miền hợp lệ (spec: silent drop + log phía caller).
   static FrameAnalysis? tryParse(Map<String, Object?> json) {
@@ -183,6 +187,7 @@ class FrameAnalysis {
       pitchDeg: pitch?.clamp(-90, 90),
       zoomRatio: ((json['zoomRatio'] as num?)?.toDouble() ?? 1).clamp(0.1, 20),
       verticalFovDeg: (json['verticalFovDeg'] as num?)?.toDouble(),
+      throttled: json['throttled'] as bool? ?? false,
     );
   }
 }

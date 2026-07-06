@@ -14,7 +14,9 @@ import '../../../core/platform/frame_analysis_channel.dart';
 import '../../../core/platform/native_camera.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../coach/application/coach_state_provider.dart';
+import '../../coach/application/countdown_provider.dart';
 import '../../coach/domain/coach_hint.dart';
+import '../../coach/domain/countdown_controller.dart';
 import '../../coach/presentation/perf_hud.dart';
 import '../../settings/application/settings_providers.dart';
 import '../application/camera_permission_state.dart';
@@ -126,6 +128,9 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   Future<void> _onShutterPressed() async {
     if (!_captureDebouncer.tryStart()) return; // EC-7: debounce
 
+    // Chụp tay thắng countdown đang chạy (EC-S2-2).
+    ref.read(countdownProvider.notifier).notifyManual();
+
     setState(() => _capturing = true);
     try {
       final savedPath = await _capturePhotoToDisk();
@@ -226,6 +231,16 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     final showGrid = ref.watch(showGridProvider);
     final showSkeleton = ref.watch(showSkeletonProvider);
     final showPerfHud = ref.watch(showPerfHudProvider);
+    final countdown = ref.watch(countdownProvider);
+
+    // Countdown hết đếm → tự chụp (FR-S2-6). Dùng post-frame để không capture
+    // trong lúc build.
+    if (countdown.phase == CountdownPhase.firing && !_capturing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(countdownProvider.notifier).reset();
+        _onShutterPressed();
+      });
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -241,7 +256,20 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
             showGrid: showGrid,
             showSkeleton: showSkeleton,
             poseLandmarks: analysis?.poseLandmarks,
+            throttled: analysis?.throttled ?? false,
           ),
+          if (coachState.suggestedZoom != null)
+            _ZoomChip(
+              zoom: coachState.suggestedZoom!,
+              onTap: () => _nativeCamera.setZoom(coachState.suggestedZoom!),
+            ),
+          if (countdown.phase != CountdownPhase.idle &&
+              countdown.phase != CountdownPhase.firing)
+            _CountdownBanner(
+              state: countdown,
+              onStart: () => ref.read(countdownProvider.notifier).start(),
+              onCancel: () => ref.read(countdownProvider.notifier).cancel(),
+            ),
           if (kDebugMode && showPerfHud) const PerfHud(),
           SafeArea(
             child: Align(
@@ -365,6 +393,114 @@ class _CameraErrorScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Chip gợi ý zoom (FR-S2-3) — tap để áp dụng. Nằm ngoài IgnorePointer của
+/// overlay để nhận tap.
+class _ZoomChip extends StatelessWidget {
+  const _ZoomChip({required this.zoom, required this.onTap});
+
+  final double zoom;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: GestureDetector(
+            onTap: onTap,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white70),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.center_focus_strong,
+                      color: Colors.white, size: 16),
+                  const SizedBox(width: 6),
+                  Text('Chuyển ${_fmt(zoom)}x',
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 14)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _fmt(double z) =>
+      z == z.roundToDouble() ? z.toStringAsFixed(0) : z.toStringAsFixed(1);
+}
+
+/// Banner smart countdown (FR-S2-6): đề xuất (tap bắt đầu), số đếm, hoặc lý do
+/// huỷ. Không hiển thị khi idle/firing.
+class _CountdownBanner extends StatelessWidget {
+  const _CountdownBanner({
+    required this.state,
+    required this.onStart,
+    required this.onCancel,
+  });
+
+  final CountdownState state;
+  final VoidCallback onStart;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: switch (state.phase) {
+        CountdownPhase.proposed => GestureDetector(
+            onTap: onStart,
+            child: _banner(
+              icon: Icons.timer_outlined,
+              text: 'Ánh sáng đang đẹp — chạm để đếm ngược',
+            ),
+          ),
+        CountdownPhase.counting => Text(
+            '${state.secondsLeft}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 96,
+              fontWeight: FontWeight.bold,
+              shadows: [Shadow(blurRadius: 12, color: Colors.black)],
+            ),
+          ),
+        CountdownPhase.cancelled => _banner(
+            icon: Icons.info_outline,
+            text: state.cancelReason ?? 'Đã huỷ',
+          ),
+        _ => const SizedBox.shrink(),
+      },
+    );
+  }
+
+  Widget _banner({required IconData icon, required String text}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Text(text, style: const TextStyle(color: Colors.white, fontSize: 15)),
+        ],
       ),
     );
   }

@@ -34,6 +34,15 @@ class NativeCamera {
       throw CameraCaptureException(e.message ?? e.code);
     }
   }
+
+  /// Đặt zoom (bội số). Native clamp vào range thiết bị (FR-S2-3, EC-S2-4).
+  Future<void> setZoom(double ratio) async {
+    try {
+      await _controlChannel.invokeMethod<bool>('setZoom', {'ratio': ratio});
+    } on PlatformException {
+      // Zoom không đặt được không phải lỗi chặn — bỏ qua im lặng.
+    }
+  }
 }
 
 class CameraCaptureException implements Exception {

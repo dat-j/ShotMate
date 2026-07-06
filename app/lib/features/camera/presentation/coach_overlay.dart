@@ -16,11 +16,16 @@ class CoachOverlay extends StatelessWidget {
     this.showGrid = true,
     this.showSkeleton = false,
     this.poseLandmarks,
+    this.throttled = false,
   });
 
   final CoachState state;
   final bool showGrid;
   final bool showSkeleton;
+
+  /// Thiết bị đang throttle vì nhiệt (spec-sprint-2 EC-4/FR-S2-7) — hiện icon
+  /// "chế độ tiết kiệm". Đến từ `FrameAnalysis.throttled` (native).
+  final bool throttled;
 
   /// 33 điểm MediaPipe [x,y] normalized — từ `FrameAnalysis.poseLandmarks`
   /// (raw stream, không qua rule engine). Null nếu không detect được người.
@@ -40,7 +45,16 @@ class CoachOverlay extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
-                  child: _RatingStars(stars: state.ratingStars),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _RatingStars(stars: state.ratingStars),
+                      if (throttled) ...[
+                        const SizedBox(width: 8),
+                        const _ThermalBadge(),
+                      ],
+                    ],
+                  ),
                 ),
                 const Spacer(),
                 AnimatedSwitcher(
@@ -124,6 +138,31 @@ class _RatingStars extends StatelessWidget {
             size: 22,
           ),
       ],
+    );
+  }
+}
+
+/// Icon "chế độ tiết kiệm" khi thiết bị throttle vì nhiệt (EC-4).
+class _ThermalBadge extends StatelessWidget {
+  const _ThermalBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.hintCritical,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.thermostat, color: Colors.white, size: 14),
+          SizedBox(width: 4),
+          Text('Tiết kiệm',
+              style: TextStyle(color: Colors.white, fontSize: 12)),
+        ],
+      ),
     );
   }
 }
