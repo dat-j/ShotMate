@@ -70,6 +70,7 @@ class FrameAnalysis {
     this.hasPerson = false,
     this.poseLandmarks,
     this.exposure,
+    this.inferenceLatencyMs = const {},
   });
 
   static const supportedSchemaVersion = 1;
@@ -89,6 +90,11 @@ class FrameAnalysis {
   final List<List<double>>? poseLandmarks;
   final ExposureInfo? exposure;
 
+  /// Latency mỗi detector (ms), key: 'pose' | 'composition' | ... — do native
+  /// đo (FR-S1-7). Rỗng nếu native không gửi. Dùng feed PerfTracker cho
+  /// benchmark gate; không ảnh hưởng guidance.
+  final Map<String, int> inferenceLatencyMs;
+
   /// Parse payload từ EventChannel. Trả null nếu schema không khớp
   /// hoặc dữ liệu ngoài miền hợp lệ (spec: silent drop + log phía caller).
   static FrameAnalysis? tryParse(Map<String, Object?> json) {
@@ -104,10 +110,15 @@ class FrameAnalysis {
       return null;
     }
     final rawAngle = (json['horizonAngleDeg'] as num?)?.toDouble();
+    final latency = (json['inferenceLatencyMs'] as Map<Object?, Object?>?)?.map(
+          (k, v) => MapEntry(k! as String, (v! as num).toInt()),
+        ) ??
+        const <String, int>{};
     return FrameAnalysis(
       schemaVersion: json['schemaVersion']! as int,
       timestampMs: json['timestampMs']! as int,
       horizonAngleDeg: rawAngle?.clamp(-45, 45),
+      inferenceLatencyMs: latency,
       subjectBox: json['subjectBox'] == null
           ? null
           : SubjectBox.fromJson(json['subjectBox']! as Map<String, Object?>),

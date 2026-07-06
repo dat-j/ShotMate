@@ -13,17 +13,45 @@
 /// đột với worker khác đang sửa file đó) — xem settings_providers.dart.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/perf_tracker_provider.dart';
 import '../domain/perf_tracker.dart';
 
-class PerfHud extends ConsumerWidget {
+class PerfHud extends ConsumerStatefulWidget {
   const PerfHud({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PerfHud> createState() => _PerfHudState();
+}
+
+class _PerfHudState extends ConsumerState<PerfHud> {
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // PerfTracker.record() không notify Riverpod (giữ tracker rẻ, gọi mỗi
+    // frame) — HUD tự poll để hiển thị cửa sổ trượt cập nhật.
+    _refreshTimer = Timer.periodic(
+      const Duration(milliseconds: 500),
+      (_) {
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final tracker = ref.watch(perfTrackerProvider);
     final now = DateTime.now();
     final stats = tracker.allStats(now);
@@ -56,6 +84,13 @@ class PerfHud extends ConsumerWidget {
                     Text(
                       'frame→hint p50=${endToEnd.p50Ms.toStringAsFixed(0)}ms '
                       'p90=${endToEnd.p90Ms.toStringAsFixed(0)}ms',
+                      style: TextStyle(
+                        // Gate go/no-go: đỏ khi p90 ≥ 100ms (NFR-1)
+                        color: endToEnd.p90Ms >= 100
+                            ? Colors.redAccent
+                            : Colors.greenAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),

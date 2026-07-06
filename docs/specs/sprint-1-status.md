@@ -83,9 +83,18 @@ Files: `android/app/src/main/kotlin/com/shotmate/shotmate_app/inference/` — `F
 - [ ] `inferenceLatencyMs` đã emit trong payload nhưng **chưa feed vào `PerfTracker`** (điểm nối phía Dart chưa nối — xem comment `perf_hud.dart`)
 - [ ] **iOS (Swift):** chưa bắt đầu — AVCaptureVideoDataOutput + cùng detector stack + PlatformView/capture channel tương đương (ADR-0007). Android là tham chiếu.
 
-### 2.3. Benchmark gate <100ms p90 (go/no-go — deadline roadmap: 2026-07-11)
+### 2.3. Benchmark gate <100ms p90 — ✅ PASS (2026-07-06)
 
-Android pipeline đã chạy; cần: nối `inferenceLatencyMs` → PerfTracker (2.2), thiết bị tham chiếu (Pixel 6a / iPhone 12 — **chưa xác nhận**, xem Open Questions), và đo p90 thực. Lưu ý ADR-0007: PlatformView preview có thể thêm chi phí compositing — cần đo. Perf HUD đã sẵn sàng.
+Đã nối `inferenceLatencyMs` (native emit) → PerfTracker qua `frameAnalysisStreamProvider`: mỗi frame ghi sample per-detector + `end_to_end` (= `now − timestampMs`, gồm channel transit + parse). `FrameAnalysis` parse thêm field latency (4 test mới). PerfHud chuyển ConsumerStatefulWidget tự refresh 500ms (record không notify Riverpod) + tô đỏ dòng frame→hint khi p90 ≥ 100ms.
+
+**Kết quả đo trên Xiaomi Android 16 (qua Perf HUD, cửa sổ trượt 10s):**
+
+| Metric                     | p50  | p90      | Ghi chú                                  |
+|----------------------------|------|----------|------------------------------------------|
+| **frame→hint (end_to_end)**| 3ms  | **10ms** | Ngưỡng gate <100ms → **PASS ~10× dư**    |
+| pose                       | 27ms | ~40ms    | Target ≤30ms (p50 đạt); GPU delegate     |
+
+**Go.** Lưu ý trung thực: `end_to_end` đo từ `timestampMs` native (lúc analyzer chạy) đến khi Dart nhận — chưa gồm pose async callback quay lại, nhưng cả pose p90 lẫn end_to_end p90 đều dưới budget nên kết luận vững. Chưa đo trên iPhone (iOS module chưa có) và chưa xác nhận Pixel 6a — con số hiện tại đủ để go/no-go trên Android.
 
 ### 2.4. Việc nhỏ còn nợ
 

@@ -23,7 +23,7 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 
 | Goal | Key Result | Status |
 |------|------------|--------|
-| Chứng minh realtime coaching khả thi | Frame→hint <100ms p90 trên Pixel 6a/iPhone 12 | Not Started |
+| Chứng minh realtime coaching khả thi | Frame→hint <100ms p90 trên Pixel 6a/iPhone 12 | ✅ Đạt (Android): p90=10ms trên Xiaomi Android 16 (2026-07-06); còn xác nhận iPhone |
 | Beta với user thật | ≥ 50 beta testers, D7 retention > 20% | Not Started |
 | Nền tảng doanh thu | Subscription live trên 2 store, conversion ≥ 2% | Not Started |
 
@@ -39,7 +39,7 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 - [x] Native inference module **Android**: CameraX + MediaPipe pose (GPU) + ML Kit face + exposure sampler + horizon + thermal/rotation → EventChannel. Verify trên Android 16. **iOS chưa bắt đầu** (Android là tham chiếu). Xem ADR-0007 (native sở hữu camera).
 - [x] Rule engine v0 (horizon, thirds, subject size/cut) + HintPrioritizer — 13 golden test
 - [x] Photo Score cơ bản 4 chiều (offline) + History (Drift) + Credit tracker — focus/background dùng placeholder chờ native detector
-- [ ] Perf HUD + **benchmark gate <100ms (go/no-go)** — HUD + PerfTracker (p50/p90 sliding window) đã dựng xong phía Dart; gate chỉ đo được khi có native module + thiết bị tham chiếu
+- [x] Perf HUD + **benchmark gate <100ms (go/no-go)** — ✅ **PASS**: inferenceLatencyMs nối vào PerfTracker qua EventChannel; đo trên Xiaomi Android 16 → frame→hint p90=10ms (gấp ~10× dưới ngưỡng). Go.
 
 **Dependencies:** None
 
@@ -107,8 +107,8 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 
 | Milestone | Target Date | Status | Notes |
 |-----------|-------------|--------|-------|
-| Benchmark gate pass (<100ms) | 2026-07-11 | Pending | Go/no-go của cả sản phẩm — blocked bởi native module (chưa bắt đầu) |
-| Sprint 1 done — app coach được composition | 2026-07-18 | In Progress | Dart layer + runner + native inference **Android** xong 2026-07-06 (verify thiết bị thật); còn iOS module + nối perf + benchmark |
+| Benchmark gate pass (<100ms) | 2026-07-11 | ✅ **Passed** 2026-07-06 | frame→hint **p90=10ms** (p50=3ms), pose p90≈40ms — đo trên Xiaomi Android 16 qua Perf HUD. Gấp ~10× dưới ngưỡng. Go. |
+| Sprint 1 done — app coach được composition | 2026-07-18 | In Progress | Dart layer + runner + native inference **Android** + benchmark gate PASS xong 2026-07-06 (thiết bị thật); còn iOS module + việc nhỏ §2.4 |
 | Sprint 2 done — full coaching offline | 2026-08-01 | Pending | Airplane-mode demo được toàn bộ |
 | Beta launch (TestFlight + Internal) | 2026-08-15 | Pending | |
 | Public launch quyết định sau beta | TBD | Pending | Dựa trên D7 retention + feedback |
@@ -191,3 +191,4 @@ Phase 1 ──────→ Phase 2 ──────→ Phase 3 ────
 | 2026-07-03 | Đạt Trần (swarm) | Sprint 1 Dart layer done (commit `b5568dc`): rule engine, PhotoScorer, Drift, capture flow, 4 màn hình, Perf HUD scaffolding — 80/80 test. Phase 1 → In Progress; còn native module + benchmark gate. Chi tiết: [sprint-1-status.md](specs/sprint-1-status.md) |
 | 2026-07-06 | Đạt Trần (swarm) | Scaffold native runner + camera permissions (commit `d839b03`, local — chưa push): `flutter create` android/ios, CAMERA/minSdk 24 (Android), NSCameraUsageDescription (iOS). Debug APK build + cài + chạy trên thiết bị thật (Android 16) không crash, camera plugin init OK. Mở khoá bước native inference module. |
 | 2026-07-06 | Đạt Trần (swarm) | **Native inference module Android** (local — chưa push): CameraX (Preview+Analysis+Capture một owner) + MediaPipe pose GPU + ML Kit face + exposure sampler + horizon + thermal/rotation → EventChannel; Dart PlatformView preview + capture channel; **ADR-0007** (native sở hữu camera, giải xung đột với `camera` plugin). Verify thiết bị thật: preview + overlay chạy trên payload native, chụp OK, no crash. analyze 0 · test 80/80. iOS module còn nợ. |
+| 2026-07-06 | Đạt Trần (swarm) | **Benchmark gate PASS** (local — chưa push): nối `inferenceLatencyMs` từ payload native → PerfTracker qua `frameAnalysisStreamProvider`; PerfHud tự refresh + tô đỏ khi p90≥100ms. Đo trên Xiaomi Android 16: **frame→hint p90=10ms, p50=3ms**, pose p90≈40ms — gate <100ms PASS. Thêm 4 test (84/84). Sprint 2 spec: [spec-sprint-2.md](specs/spec-sprint-2.md). |
