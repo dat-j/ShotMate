@@ -54,10 +54,32 @@ class Credits extends Table {
   Set<Column<Object>> get primaryKey => {day};
 }
 
-@DriftDatabase(tables: [Photos, Analyses, Scores, Credits])
+/// Settings key-value (spec-sprint-2 FR-S2-7) — persist toggle qua restart.
+/// Value JSON-encode (bool/num/string) để linh hoạt.
+class Settings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {key};
+}
+
+@DriftDatabase(tables: [Photos, Analyses, Scores, Credits, Settings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // v1 → v2 (spec-sprint-2): thêm bảng settings, giữ nguyên dữ liệu
+          // photos/analyses/scores/credits.
+          if (from < 2) {
+            await m.createTable(settings);
+          }
+        },
+      );
 }

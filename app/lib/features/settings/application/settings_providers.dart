@@ -1,25 +1,54 @@
-/// State toggles cho SettingsScreen (spec-sprint-1 FR-S1-4, FR-S1-7).
+/// State toggles cho SettingsScreen (spec-sprint-1 FR-S1-4/7, spec-sprint-2
+/// FR-S2-7: persist qua restart bằng Drift).
 ///
-/// Các provider dưới đây là nguồn sự thật duy nhất cho việc hiển thị
-/// grid rule-of-thirds / skeleton debug / Perf HUD trên camera overlay.
-/// Chúng CHỈ gate rendering ở nơi khác (camera_screen.dart / coach_overlay.dart /
-/// perf_hud.dart) — việc wiring conditional rendering đó nằm ngoài scope
-/// của settings feature, xem TODO ở các file đó.
+/// Mỗi toggle là [ToggleNotifier] đọc giá trị đầu từ Drift (bảng `settings`)
+/// và ghi lại mỗi khi đổi. Giá trị mặc định dùng ngay lập tức (đồng bộ), Drift
+/// nạp bất đồng bộ và cập nhật khi xong — tránh chớp UI lúc khởi động.
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Hiển thị lưới rule-of-thirds trên coach overlay. Mặc định bật
-/// (spec FR-S1-4: "grid rule-of-thirds (bật/tắt được)").
-final showGridProvider = StateProvider<bool>((ref) => true);
+import '../data/settings_repository.dart';
 
-/// Hiển thị skeleton dots (pose landmarks) — debug visualization, mặc định
-/// tắt (spec FR-S1-4: "skeleton dots ... debug visualization, toggle trong
-/// settings").
-final showSkeletonProvider = StateProvider<bool>((ref) => false);
+class ToggleNotifier extends Notifier<bool> {
+  ToggleNotifier(this._key, this._defaultValue);
 
-/// Hiển thị Perf HUD (fps/latency per-detector, frame→hint p50/p90) — chỉ
-/// có ý nghĩa ở debug build (spec FR-S1-7: "Perf HUD (debug builds)").
-/// Caller phải tự kiểm tra `kDebugMode` trước khi đọc provider này để mount
-/// widget — xem `perf_hud.dart`.
-final showPerfHudProvider = StateProvider<bool>((ref) => false);
+  final String _key;
+  final bool _defaultValue;
+
+  @override
+  bool build() {
+    // Nạp giá trị đã lưu (async) rồi cập nhật state.
+    final repo = ref.watch(settingsRepositoryProvider);
+    repo.getBool(_key, defaultValue: _defaultValue).then((v) {
+      if (v != state) state = v;
+    });
+    return _defaultValue;
+  }
+
+  /// Đổi + persist.
+  Future<void> set(bool value) async {
+    state = value;
+    await ref.read(settingsRepositoryProvider).setBool(_key, value);
+  }
+}
+
+/// Lưới rule-of-thirds trên overlay, mặc định bật (FR-S1-4).
+final showGridProvider = NotifierProvider<ToggleNotifier, bool>(
+  () => ToggleNotifier(SettingKeys.showGrid, true),
+);
+
+/// Skeleton dots (pose landmarks) debug, mặc định tắt (FR-S1-4).
+final showSkeletonProvider = NotifierProvider<ToggleNotifier, bool>(
+  () => ToggleNotifier(SettingKeys.showSkeleton, false),
+);
+
+/// Perf HUD (debug builds), mặc định tắt (FR-S1-7).
+final showPerfHudProvider = NotifierProvider<ToggleNotifier, bool>(
+  () => ToggleNotifier(SettingKeys.showPerfHud, false),
+);
+
+/// Smart Countdown tự chụp (spec-sprint-2 FR-S2-6/7), mặc định bật.
+final smartCountdownEnabledProvider = NotifierProvider<ToggleNotifier, bool>(
+  () => ToggleNotifier(SettingKeys.smartCountdown, true),
+);

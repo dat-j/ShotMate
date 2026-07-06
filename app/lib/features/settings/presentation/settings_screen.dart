@@ -16,6 +16,7 @@ class SettingsScreen extends ConsumerWidget {
     final showGrid = ref.watch(showGridProvider);
     final showSkeleton = ref.watch(showSkeletonProvider);
     final showPerfHud = ref.watch(showPerfHudProvider);
+    final smartCountdown = ref.watch(smartCountdownEnabledProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Cài đặt')),
@@ -25,13 +26,20 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Hiển thị lưới rule-of-thirds'),
             value: showGrid,
             onChanged: (value) =>
-                ref.read(showGridProvider.notifier).state = value,
+                ref.read(showGridProvider.notifier).set(value),
           ),
           SwitchListTile(
             title: const Text('Hiển thị skeleton debug'),
             value: showSkeleton,
             onChanged: (value) =>
-                ref.read(showSkeletonProvider.notifier).state = value,
+                ref.read(showSkeletonProvider.notifier).set(value),
+          ),
+          SwitchListTile(
+            title: const Text('Smart Countdown'),
+            subtitle: const Text('Tự chụp khi ánh sáng đang đẹp dần'),
+            value: smartCountdown,
+            onChanged: (value) =>
+                ref.read(smartCountdownEnabledProvider.notifier).set(value),
           ),
           // Perf HUD chỉ có ý nghĩa ở debug build (spec FR-S1-7: "Perf HUD
           // (debug builds)") — ẩn toggle hoàn toàn ở release build.
@@ -41,7 +49,7 @@ class SettingsScreen extends ConsumerWidget {
               subtitle: const Text('fps/latency per-detector, frame→hint p50/p90'),
               value: showPerfHud,
               onChanged: (value) =>
-                  ref.read(showPerfHudProvider.notifier).state = value,
+                  ref.read(showPerfHudProvider.notifier).set(value),
             ),
         ],
       ),
