@@ -1,18 +1,18 @@
-# Sprint 1 — Status & Handoff (Dart layer done)
+# Sprint 1 — Status & Handoff (Dart layer + native runner done)
 
 <!--
 Sprint Status / Handoff Note
 Filename: docs/specs/sprint-1-status.md
 Owner: Builder
-Purpose: Tổng hợp việc đã xong (commit b5568dc) + việc còn lại để triển khai tiếp Sprint 1.
+Purpose: Tổng hợp việc đã xong (commit b5568dc + d839b03) + việc còn lại để triển khai tiếp Sprint 1.
 Related: spec-sprint-1.md (spec gốc), roadmap.md (Phase 1)
 -->
 
 ## Metadata
 
-**Date:** 2026-07-03
-**Commit:** `b5568dc` (main, đã push) — 34 files, +3137/-48
-**Quality gate:** `flutter analyze` 0 issue · `flutter test` 80/80 pass
+**Date:** 2026-07-06 (cập nhật: scaffold native runner)
+**Commit:** `b5568dc` (Dart layer, đã push) · `d839b03` (native runner + camera permissions — **local, chưa push**, xem §3)
+**Quality gate:** `flutter analyze` 0 issue · `flutter test` 80/80 pass · debug APK build + chạy trên thiết bị thật OK
 
 ---
 
@@ -48,18 +48,17 @@ Related: spec-sprint-1.md (spec gốc), roadmap.md (Phase 1)
 
 ## 2. Việc còn lại của Sprint 1 (theo thứ tự nên làm)
 
-### 2.1. Scaffold native runner — điều kiện tiên quyết để chạy app
+### 2.1. Scaffold native runner — ✅ XONG (commit `d839b03`, 2026-07-06)
 
-`app/android` và `app/ios` hiện **chỉ có contract docs** (NATIVE_MODULE.md) + file generated — không có `AndroidManifest.xml`, `build.gradle`, Xcode project, `Info.plist`. App chưa chạy được trên bất kỳ thiết bị/emulator nào.
+`flutter create . --platforms android,ios --org com.shotmate` đã sinh runner đầy đủ (61 file, `lib/` giữ nguyên). Đã cấu hình:
 
-```bash
-cd app && flutter create . --platforms android,ios   # sinh runner đầy đủ, không đụng lib/
-```
+- Android: `CAMERA` uses-permission + `uses-feature` camera/autofocus; `minSdk = maxOf(24, flutter.minSdkVersion)`; label `ShotMate`
+- iOS: `NSCameraUsageDescription` + `NSPhotoLibraryAddUsageDescription` trong Info.plist
+- Xoá README template rỗng do `flutter create` sinh ra
 
-Sau đó bắt buộc:
-- Android: thêm `<uses-permission android:name="android.permission.CAMERA"/>` vào AndroidManifest.xml; minSdk theo yêu cầu `camera` + MediaPipe (≥ 24)
-- iOS: thêm `NSCameraUsageDescription` vào Info.plist
-- Chạy smoke test trên thiết bị: mở app → preview → chụp → score → history
+**Verify:** `flutter analyze` 0 issue · `flutter test` 80/80 pass · `assembleDebug` build OK · cài + launch trên thiết bị thật (Xiaomi, Android 16 / API 36) **không crash** — logcat cho thấy camera plugin khởi tạo được session (`updateSessionParams ... com.shotmate.shotmate_app`).
+
+**Còn nợ:** smoke test bằng tay full flow (preview → chụp → score → history) — cần thao tác UI trên máy; scaffold + camera-init đã pass.
 
 ### 2.2. Native Inference Module (FR-S1-2) — khối lượng lớn nhất còn lại
 
@@ -89,6 +88,8 @@ Cần 2.1 + 2.2 xong + thiết bị tham chiếu (Pixel 6a / iPhone 12 — **ch�
 - Flutter SDK: `~/Documents/flutter_SDK/flutter/bin` — đã thêm vào `~/.zshrc`
 - Drift test cần `libsqlite3.so`: host thiếu symlink dev — đã tạo `~/.local/lib/libsqlite3.so → libsqlite3.so.0` + `LD_LIBRARY_PATH` trong `~/.zshrc` (không cần sudo). CI Linux sẽ cần `libsqlite3-dev` hoặc workaround tương tự.
 - `*.g.dart`/`*.freezed.dart` gitignored — chạy `dart run build_runner build -d` sau khi clone.
+- **Thiết bị test:** Xiaomi (Android 16 / API 36, arm64) qua adb-wifi. Lưu ý: adb liệt kê theo địa chỉ IP (`192.168.x.x:port`), không phải serial `2210132C` → khi `adb -s` phải dùng địa chỉ IP. `flutter install` mặc định tìm `app-release.apk`; cài debug bằng `adb install -r build/app/outputs/flutter-apk/app-debug.apk`.
+- **Push remote:** origin là HTTPS (`github.com/dat-j/ShotMate.git`) nhưng host không có credential/token → `git push` fail (`could not read Username`). Commit `d839b03` đang nằm ở local. Cần Đạt cấu hình PAT/SSH rồi push tay.
 
 ## 4. Quyết định/deviation trong lúc làm
 
@@ -98,3 +99,5 @@ Cần 2.1 + 2.2 xong + thiết bị tham chiếu (Pixel 6a / iPhone 12 — **ch�
 | Focus/background input = placeholder (50.0 / 0.3) có TODO | Native detector chưa tồn tại; giữ PhotoScorer pure + testable, thay số khi native xong |
 | Hết quota: không insert Score row (thay vì insert rồi ẩn) | Đơn giản hơn, history/score screen phân biệt qua `score == null` (EC-5) |
 | Settings = StateProvider in-memory, chưa persist | Spec không yêu cầu persist; tránh nở scope |
+| `flutter create --org com.shotmate` → applicationId `com.shotmate.shotmate_app` | Chưa có bundle ID chính thức; đổi trước khi submit store (Sprint 3) |
+| `minSdk = maxOf(24, flutter.minSdkVersion)` thay vì hardcode 24 | Giữ ngưỡng ≥ 24 (camera + MediaPipe) nhưng tự nâng nếu Flutter yêu cầu cao hơn |
