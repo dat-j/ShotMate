@@ -9,6 +9,24 @@
 /// có thể migrate sang freezed khi codegen đã nằm trong workflow.
 library;
 
+/// Phân loại scene v1 (spec-sprint-2 FR-S2-2). `unknown` = chưa rõ / khởi động.
+enum SceneType {
+  landscape,
+  portrait,
+  food,
+  unknown;
+
+  /// Parse từ string native, coerce về [unknown] nếu không hợp lệ
+  /// (spec-sprint-2 Data Validation).
+  static SceneType fromName(Object? raw) {
+    if (raw is! String) return SceneType.unknown;
+    for (final v in SceneType.values) {
+      if (v.name == raw) return v;
+    }
+    return SceneType.unknown;
+  }
+}
+
 /// Bounding box normalized [0,1] theo khung hình.
 class SubjectBox {
   const SubjectBox({
@@ -71,9 +89,15 @@ class FrameAnalysis {
     this.poseLandmarks,
     this.exposure,
     this.inferenceLatencyMs = const {},
+    this.sceneType = SceneType.unknown,
+    this.sceneConfidence = 0,
+    this.smilingProbability,
+    this.pitchDeg,
+    this.zoomRatio = 1,
+    this.verticalFovDeg,
   });
 
-  static const supportedSchemaVersion = 1;
+  static const supportedSchemaVersion = 2;
 
   final int schemaVersion;
   final int timestampMs;
@@ -95,6 +119,27 @@ class FrameAnalysis {
   /// benchmark gate; không ảnh hưởng guidance.
   final Map<String, int> inferenceLatencyMs;
 
+  // --- schemaVersion 2 (spec-sprint-2 FR-S2-8) ---
+
+  /// Scene raw mỗi frame (chưa qua Rule 6 ổn định 3 mẫu — đó là việc của Dart).
+  final SceneType sceneType;
+
+  /// [0,1] độ tin cậy scene classifier.
+  final double sceneConfidence;
+
+  /// [0,1] xác suất cười (ML Kit face). Null nếu không có mặt / không đo.
+  final double? smilingProbability;
+
+  /// Góc chúc/ngửa máy, độ, [-90,90]. 0 = dựng đứng vuông mặt đất, dương = ngửa.
+  final double? pitchDeg;
+
+  /// Zoom hiện tại (bội số quang/số). Mặc định 1x.
+  final double zoomRatio;
+
+  /// FOV dọc (độ) đọc từ CameraCharacteristics — dùng ước lượng khoảng cách.
+  /// Null nếu thiết bị không cung cấp (rule distance tự tắt — FR-S2-4).
+  final double? verticalFovDeg;
+
   /// Parse payload từ EventChannel. Trả null nếu schema không khớp
   /// hoặc dữ liệu ngoài miền hợp lệ (spec: silent drop + log phía caller).
   static FrameAnalysis? tryParse(Map<String, Object?> json) {
@@ -114,6 +159,8 @@ class FrameAnalysis {
           (k, v) => MapEntry(k! as String, (v! as num).toInt()),
         ) ??
         const <String, int>{};
+    final smile = (json['smilingProbability'] as num?)?.toDouble();
+    final pitch = (json['pitchDeg'] as num?)?.toDouble();
     return FrameAnalysis(
       schemaVersion: json['schemaVersion']! as int,
       timestampMs: json['timestampMs']! as int,
@@ -129,6 +176,13 @@ class FrameAnalysis {
       exposure: json['exposure'] == null
           ? null
           : ExposureInfo.fromJson(json['exposure']! as Map<String, Object?>),
+      sceneType: SceneType.fromName(json['sceneType']),
+      sceneConfidence:
+          ((json['sceneConfidence'] as num?)?.toDouble() ?? 0).clamp(0, 1),
+      smilingProbability: smile?.clamp(0, 1),
+      pitchDeg: pitch?.clamp(-90, 90),
+      zoomRatio: ((json['zoomRatio'] as num?)?.toDouble() ?? 1).clamp(0.1, 20),
+      verticalFovDeg: (json['verticalFovDeg'] as num?)?.toDouble(),
     );
   }
 }

@@ -70,6 +70,11 @@ data class FrameAnalysisPayload(
     }
 
     companion object {
-        const val SCHEMA_VERSION = 1
+        // schemaVersion 2 (spec-sprint-2 FR-S2-8) — mirror frame_analysis.dart.
+        // Field v2 (sceneType, smilingProbability, pitchDeg, zoomRatio,
+        // verticalFovDeg) sẽ được thêm vào payload khi detector tương ứng xong;
+        // Dart parse chúng optional nên bump version an toàn ngay cả khi native
+        // chưa emit đủ (tránh drop toàn bộ frame do version mismatch).
+        const val SCHEMA_VERSION = 2
     }
 }

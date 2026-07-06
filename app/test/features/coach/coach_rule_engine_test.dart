@@ -147,15 +147,20 @@ void main() {
 
   group('FrameAnalysis.tryParse', () {
     test('schema khác version → null (silent drop)', () {
+      // v1 giờ đã supersede bởi v2 (spec-sprint-2 FR-S2-8)
       expect(
-        FrameAnalysis.tryParse({'schemaVersion': 2, 'timestampMs': 1}),
+        FrameAnalysis.tryParse({'schemaVersion': 1, 'timestampMs': 1}),
+        isNull,
+      );
+      expect(
+        FrameAnalysis.tryParse({'schemaVersion': 99, 'timestampMs': 1}),
         isNull,
       );
     });
 
     test('horizonAngleDeg ngoài miền bị clamp về [-45,45]', () {
       final parsed = FrameAnalysis.tryParse({
-        'schemaVersion': 1,
+        'schemaVersion': 2,
         'timestampMs': 1,
         'horizonAngleDeg': 90.0,
       });
