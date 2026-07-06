@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -148,7 +149,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
       );
 
       if (!mounted) return;
-      context.go('/score/${result.photoId}');
+      // push (không go): giữ camera dưới stack để back từ Score quay về camera.
+      unawaited(context.push('/score/${result.photoId}'));
     } finally {
       _captureDebouncer.finish();
       if (mounted) setState(() => _capturing = false);
@@ -280,7 +282,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     IconButton(
-                      onPressed: () => context.go('/history'),
+                      onPressed: () => context.push('/history'),
                       icon: const Icon(Icons.photo_library_outlined,
                           color: Colors.white, size: 32),
                     ),
@@ -289,7 +291,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       onPressed: _onShutterPressed,
                     ),
                     IconButton(
-                      onPressed: () => context.go('/settings'),
+                      onPressed: () => context.push('/settings'),
                       icon: const Icon(Icons.settings_outlined,
                           color: Colors.white, size: 32),
                     ),

@@ -5,6 +5,7 @@ library;
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../application/settings_providers.dart';
 
@@ -17,6 +18,10 @@ class SettingsScreen extends ConsumerWidget {
     final showSkeleton = ref.watch(showSkeletonProvider);
     final showPerfHud = ref.watch(showPerfHudProvider);
     final smartCountdown = ref.watch(smartCountdownEnabledProvider);
+
+    // DEBUG tạm: canPop cho biết có route dưới stack không.
+    debugPrint('SETTINGS canPop=${Navigator.of(context).canPop()} '
+        'goRouterCanPop=${GoRouter.of(context).canPop()}');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Cài đặt')),

@@ -166,7 +166,7 @@ class _HistoryTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: ListTile(
-        onTap: () => context.go('/score/${photo.id}'),
+        onTap: () => context.push('/score/${photo.id}'),
         contentPadding: const EdgeInsets.all(AppSpacing.sm),
         leading: _Thumbnail(filePath: photo.filePath),
         title: item.score == null

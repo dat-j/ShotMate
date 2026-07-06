@@ -56,7 +56,7 @@ void main() {
   }
 
   /// Bọc [HistoryScreen] trong ProviderScope + router tối thiểu để test
-  /// navigation bằng `context.go` (spec FR-S1-6: tap → `/score/:photoId`).
+  /// navigation bằng `context.push` (spec FR-S1-6: tap → `/score/:photoId`).
   Widget buildTestApp() {
     final router = GoRouter(
       initialLocation: '/history',
