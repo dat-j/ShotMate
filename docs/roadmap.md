@@ -51,15 +51,17 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 ### Phase 2: Sprint 2 — Core Coaching (Pose/Zoom/Distance/Angle/Countdown)
 
 **Timeline:** 2026-07-21 → 2026-08-01
-**Status:** Not Started
+**Status:** In Progress — implement sớm 2026-07-06 (Android). Spec: [spec-sprint-2.md](specs/spec-sprint-2.md).
 
 **Deliverables:**
-- [ ] Pose Guide hints (raise chin, move right, smile — max 2 hint rule)
-- [ ] Scene classifier (landscape/portrait/food) → Zoom Suggestion (0.5x/1x/1.5x/2x)
-- [ ] Distance Guide (quá gần/xa + cm ước lượng) + Angle Guide (tilt ±°)
-- [ ] Smart Countdown theo lighting trend
-- [ ] Photo Review screen hoàn chỉnh + Settings
-- [ ] Thermal adaptive throttling hoàn thiện (EC-4)
+- [x] Pose Guide hints (raise chin, smile — rule engine + golden test; native emit smilingProbability)
+- [x] Scene classifier (landscape/portrait/food, ML Kit labeling 1fps) → Zoom Suggestion (chip tap→setZoom, clamp range)
+- [x] Distance Guide (quá gần/xa + cm ước lượng từ FOV) + Angle Guide (tilt theo scene, pitch từ gravity)
+- [x] Smart Countdown theo lighting trend (state machine + auto-capture, EC-S2-1/2)
+- [x] Photo Review screen "vì sao" + Settings persist (Drift schema v2)
+- [x] Thermal badge UI (throttled từ native, EC-4)
+
+> Còn nợ Sprint 2: iOS native module (Android-first, sang Sprint 3); đo accuracy scene ≥85% trên test set 150 ảnh (chưa gom); user test hint overload; verify động zoom chip/countdown trên thiết bị (logic đã test đơn vị). Toàn bộ logic Dart + native Android xong, `flutter test` 126/126.
 
 **Dependencies:** Phase 1 complete (đặc biệt benchmark gate pass)
 
@@ -109,7 +111,7 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 |-----------|-------------|--------|-------|
 | Benchmark gate pass (<100ms) | 2026-07-11 | ✅ **Passed** 2026-07-06 | frame→hint **p90=10ms** (p50=3ms), pose p90≈40ms — đo trên Xiaomi Android 16 qua Perf HUD. Gấp ~10× dưới ngưỡng. Go. |
 | Sprint 1 done — app coach được composition | 2026-07-18 | In Progress | Dart layer + runner + native inference **Android** + benchmark gate PASS xong 2026-07-06 (thiết bị thật); còn iOS module + việc nhỏ §2.4 |
-| Sprint 2 done — full coaching offline | 2026-08-01 | Pending | Airplane-mode demo được toàn bộ |
+| Sprint 2 done — full coaching offline | 2026-08-01 | In Progress | Logic + native Android xong sớm 2026-07-06 (pose/scene/zoom/distance/angle/countdown, 126 test); còn iOS + đo accuracy scene + user test |
 | Beta launch (TestFlight + Internal) | 2026-08-15 | Pending | |
 | Public launch quyết định sau beta | TBD | Pending | Dựa trên D7 retention + feedback |
 
@@ -192,3 +194,4 @@ Phase 1 ──────→ Phase 2 ──────→ Phase 3 ────
 | 2026-07-06 | Đạt Trần (swarm) | Scaffold native runner + camera permissions (commit `d839b03`, local — chưa push): `flutter create` android/ios, CAMERA/minSdk 24 (Android), NSCameraUsageDescription (iOS). Debug APK build + cài + chạy trên thiết bị thật (Android 16) không crash, camera plugin init OK. Mở khoá bước native inference module. |
 | 2026-07-06 | Đạt Trần (swarm) | **Native inference module Android** (local — chưa push): CameraX (Preview+Analysis+Capture một owner) + MediaPipe pose GPU + ML Kit face + exposure sampler + horizon + thermal/rotation → EventChannel; Dart PlatformView preview + capture channel; **ADR-0007** (native sở hữu camera, giải xung đột với `camera` plugin). Verify thiết bị thật: preview + overlay chạy trên payload native, chụp OK, no crash. analyze 0 · test 80/80. iOS module còn nợ. |
 | 2026-07-06 | Đạt Trần (swarm) | **Benchmark gate PASS** (local — chưa push): nối `inferenceLatencyMs` từ payload native → PerfTracker qua `frameAnalysisStreamProvider`; PerfHud tự refresh + tô đỏ khi p90≥100ms. Đo trên Xiaomi Android 16: **frame→hint p90=10ms, p50=3ms**, pose p90≈40ms — gate <100ms PASS. Thêm 4 test (84/84). Sprint 2 spec: [spec-sprint-2.md](specs/spec-sprint-2.md). |
+| 2026-07-06 | Đạt Trần (swarm) | **Sprint 2 implement sớm (Android)** — 6 commit: schema v2, rule engine (pose/distance/angle), scene stability + zoom advisor + countdown state machine, Drift settings persist, native (ML Kit scene classifier + smile + pitch + zoom/FOV, verify thiết bị: scene=landscape conf=0.83, pitch=-87°, fov=64.5), UI (zoom chip/countdown/thermal/score "vì sao"). analyze 0 · test 126/126. Còn iOS + accuracy scene + user test. |

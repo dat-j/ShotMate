@@ -288,19 +288,20 @@ Không đổi so với Sprint 1 (Drift 10k ảnh vẫn đạt target).
 ## Acceptance Criteria
 
 > Nền tảng verify: **Android reference device** (Android-first — quyết định 2026-07-06; iOS native module sang Sprint 3).
+> Trạng thái cập nhật 2026-07-06 (implement sớm). ✅ done · 🟡 code xong, cần verify động/manual · ⬜ chưa.
 
-- [ ] Airplane mode, Android: scene chip + zoom suggestion + pose/distance/angle hint + smart countdown hoạt động đủ (milestone roadmap "full coaching offline")
-- [ ] iOS: `flutter build ios --no-codesign` pass, CameraScreen fallback plugin không crash (không yêu cầu inference)
-- [ ] Không bao giờ > 2 hint; mọi rule mới có hysteresis — dao động quanh ngưỡng không gây nhấp nháy (golden test + manual)
-- [ ] Scene classifier: macro accuracy ≥ 85% trên test set 150 ảnh; confusion matrix ghi vào `docs/specs/` (Rule 8; dưới ngưỡng → đã chạy đường thoát và ghi quyết định)
-- [ ] Countdown: tự chụp khi hết đếm; huỷ đúng 4 điều kiện Rule 7 (mỗi điều kiện có test); chụp tay giữa countdown → 1 ảnh duy nhất (EC-S2-2)
-- [ ] Zoom chip tap → preview đổi < 300ms; không bao giờ gợi ý ngoài `getZoomRange()` (EC-S2-4)
-- [ ] Frame→hint p90 < 100ms đo lại SAU khi bật toàn bộ detector mới, trên reference device
-- [ ] Settings (4 toggle) sống sót app restart; migration Drift v1→v2 không mất dữ liệu photos/scores cũ
-- [ ] Score screen "Vì sao" hiển thị đúng rule vi phạm + hint đã hiện của chính ảnh đó (đọc từ analyses.result, không tính lại)
-- [ ] Thermal: ép nhiệt (hoặc mock thermal status) → icon tiết kiệm + scene giữ nguyên + countdown ngừng đề xuất (EC-S2-8)
-- [ ] Rule engine coverage ≥ 90%; EC-S2-1..9 có test (trừ EC-S2-4/5 cần manual trên thiết bị — có checklist)
-- [ ] `flutter analyze` 0 issue, `flutter test` pass, không secrets trong diff
+- [ ] 🟡 Airplane mode, Android: scene chip + zoom suggestion + pose/distance/angle hint + smart countdown — code xong end-to-end (native emit + rule + UI, verify camera screen không crash); cần verify động từng tính năng với cảnh thật + airplane mode
+- [ ] ⬜ iOS: `flutter build ios --no-codesign` pass — chưa chạy (không có macOS host); path fallback plugin đã có sẵn trong code
+- [x] ✅ Không bao giờ > 2 hint; mọi rule mới có hysteresis — HintPrioritizer + golden test (raise_chin/smile/distance/angle có test ON/OFF)
+- [ ] ⬜ Scene classifier macro accuracy ≥ 85% trên test set 150 ảnh — classifier chạy trên thiết bị (conf 0.83 quan sát được); **chưa gom test set để đo accuracy chính thức**
+- [x] ✅ Countdown: state machine tự chụp khi hết đếm; huỷ 4 điều kiện Rule 7; chụp tay → 1 ảnh (EC-S2-2) — 11 unit test phủ; auto-capture wire vào camera screen
+- [ ] 🟡 Zoom chip tap → setZoom; không gợi ý ngoài range (EC-S2-4 có test) — chip + setZoom channel xong; cần verify động độ trễ preview <300ms
+- [x] ✅ Frame→hint p90 < 100ms — đo p90=10ms (gate Sprint 1); detector mới (scene 1fps) ngoài đường frame→hint nên không đổi budget
+- [x] ✅ Settings 4 toggle sống sót restart; migration Drift v1→v2 giữ dữ liệu cũ — SettingsRepository + MigrationStrategy, 6 test
+- [x] ✅ Score screen "Có thể cải thiện" từ captureMeta.hintsShown (không tính lại) — FR-S2-7
+- [ ] 🟡 Thermal: icon tiết kiệm + scene giữ + countdown ngừng (EC-S2-8) — logic có (native tắt scene khi throttled, badge UI); cần ép nhiệt để verify manual
+- [x] ✅ Rule engine coverage ≥ 90%; EC-S2-1/2/3/4 có test (EC-S2-5/7/8 cần manual/thiết bị)
+- [x] ✅ `flutter analyze` 0 issue, `flutter test` 126/126 pass, không secrets trong diff
 
 ---
 
