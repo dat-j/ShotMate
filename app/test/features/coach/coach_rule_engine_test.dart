@@ -9,15 +9,32 @@ FrameAnalysis frame({
   SubjectBox? box,
   double confidence = 0.9,
   bool hasPerson = false,
+  List<List<double>>? landmarks,
+  double? smile,
+  double? pitch,
+  double? fov,
 }) =>
     FrameAnalysis(
-      schemaVersion: 1,
+      schemaVersion: 2,
       timestampMs: 0,
       horizonAngleDeg: horizon,
       subjectBox: box,
       subjectConfidence: confidence,
       hasPerson: hasPerson,
+      poseLandmarks: landmarks,
+      smilingProbability: smile,
+      pitchDeg: pitch,
+      verticalFovDeg: fov,
     );
+
+/// 33 landmark phẳng, mọi điểm ở [0.5, y] trừ khi override. Tiện dựng pose test.
+List<List<double>> landmarks33({double noseY = 0.3, double shoulderY = 0.4}) {
+  final lm = List.generate(33, (_) => [0.5, 0.5]);
+  lm[0] = [0.5, noseY]; // nose
+  lm[11] = [0.4, shoulderY]; // left shoulder
+  lm[12] = [0.6, shoulderY]; // right shoulder
+  return lm;
+}
 
 void main() {
   const engine = CoachRuleEngine();
@@ -142,6 +159,133 @@ void main() {
       final switched = prioritizer.select(second,
           now: t0.add(const Duration(milliseconds: 800)));
       expect(switched.map((h) => h.id), ['b']);
+    });
+  });
+
+  // --- Sprint 2 rules ---
+
+  SubjectBox boxWH(double w, double h) =>
+      SubjectBox(left: 0.5 - w / 2, top: 0.5 - h / 2, width: w, height: h);
+
+  group('raise_chin (FR-S2-1)', () {
+    test('mũi thấp hơn vai > 8% → nâng cằm', () {
+      final state = engine.evaluate(frame(
+        hasPerson: true,
+        box: boxWH(0.3, 0.4),
+        landmarks: landmarks33(noseY: 0.5, shoulderY: 0.4), // drop 0.1 > 0.08
+      ));
+      final hint = state.hints.singleWhere((h) => h.id == 'raise_chin');
+      expect(hint.severity, HintSeverity.polish);
+      expect(hint.direction, HintDirection.up);
+    });
+
+    test('không hint khi mũi cao hơn vai (tư thế bình thường)', () {
+      final state = engine.evaluate(frame(
+        hasPerson: true,
+        box: boxWH(0.3, 0.4),
+        landmarks: landmarks33(noseY: 0.3, shoulderY: 0.4),
+      ));
+      expect(state.hints.map((h) => h.id), isNot(contains('raise_chin')));
+    });
+
+    test('pose rule tắt khi confidence < 0.7', () {
+      final state = engine.evaluate(frame(
+        hasPerson: true,
+        confidence: 0.6,
+        box: boxWH(0.3, 0.4),
+        landmarks: landmarks33(noseY: 0.5, shoulderY: 0.4),
+      ));
+      expect(state.hints.map((h) => h.id), isNot(contains('raise_chin')));
+    });
+  });
+
+  group('smile (FR-S2-1, hysteresis)', () {
+    test('smilingProbability < 0.3 → gợi ý cười', () {
+      final state = engine.evaluate(frame(
+        hasPerson: true,
+        box: boxWH(0.3, 0.4),
+        smile: 0.1,
+      ));
+      expect(state.hints.map((h) => h.id), contains('smile'));
+    });
+
+    test('0.4 giữ khi active (OFF=0.5), tắt khi không active', () {
+      final on =
+          engine.evaluate(frame(hasPerson: true, box: boxWH(0.3, 0.4), smile: 0.4),
+              activeHintIds: {'smile'});
+      expect(on.hints.map((h) => h.id), contains('smile'));
+      final off =
+          engine.evaluate(frame(hasPerson: true, box: boxWH(0.3, 0.4), smile: 0.4));
+      expect(off.hints.map((h) => h.id), isNot(contains('smile')));
+    });
+  });
+
+  group('distance (FR-S2-4)', () {
+    test('box cao > 65% → too_close (important)', () {
+      final state = engine.evaluate(
+          frame(hasPerson: true, box: boxWH(0.4, 0.7), fov: 60));
+      final hint = state.hints.singleWhere((h) => h.id == 'too_close');
+      expect(hint.severity, HintSeverity.important);
+      expect(hint.direction, HintDirection.backward);
+      expect(hint.message, contains('Lùi'));
+    });
+
+    test('box cao < 25% → too_far (polish)', () {
+      final state = engine.evaluate(
+          frame(hasPerson: true, box: boxWH(0.15, 0.2), fov: 60));
+      final hint = state.hints.singleWhere((h) => h.id == 'too_far');
+      expect(hint.severity, HintSeverity.polish);
+      expect(hint.message, contains('Tiến'));
+    });
+
+    test('không FOV → hint vẫn có nhưng không kèm cm', () {
+      final state =
+          engine.evaluate(frame(hasPerson: true, box: boxWH(0.4, 0.7)));
+      final hint = state.hints.singleWhere((h) => h.id == 'too_close');
+      expect(hint.message, isNot(contains('cm')));
+    });
+
+    test('box 45% (dải đẹp) → không distance hint', () {
+      final state = engine.evaluate(
+          frame(hasPerson: true, box: boxWH(0.4, 0.45), fov: 60));
+      expect(
+          state.hints.map((h) => h.id),
+          isNot(anyElement(anyOf('too_close', 'too_far'))));
+    });
+  });
+
+  group('tilt_angle (FR-S2-5, phụ thuộc scene)', () {
+    test('portrait: pitch ngửa 20° → cúi máy', () {
+      final state = engine.evaluate(
+        frame(hasPerson: true, box: boxWH(0.3, 0.4), pitch: 20),
+        stableScene: SceneType.portrait,
+      );
+      final hint = state.hints.singleWhere((h) => h.id == 'tilt_angle');
+      expect(hint.direction, HintDirection.down);
+      expect(hint.message, contains('Cúi'));
+    });
+
+    test('landscape: không angle hint (horizon rule lo)', () {
+      final state = engine.evaluate(
+        frame(hasPerson: true, box: boxWH(0.3, 0.4), pitch: 30),
+        stableScene: SceneType.landscape,
+      );
+      expect(state.hints.map((h) => h.id), isNot(contains('tilt_angle')));
+    });
+
+    test('scene unknown: không angle hint', () {
+      final state = engine.evaluate(
+        frame(hasPerson: true, box: boxWH(0.3, 0.4), pitch: 30),
+      );
+      expect(state.hints.map((h) => h.id), isNot(contains('tilt_angle')));
+    });
+
+    test('food: gần dải 45° → không hint (trong ngưỡng)', () {
+      final state = engine.evaluate(
+        frame(hasPerson: true, box: boxWH(0.3, 0.4), pitch: 47),
+        stableScene: SceneType.food,
+      );
+      expect(state.hints.map((h) => h.id), isNot(contains('tilt_angle')));
     });
   });
 
