@@ -45,6 +45,13 @@ data class FrameAnalysisPayload(
     val exposure: ExposurePayload?,
     val inferenceLatencyMs: Map<String, Int>,
     val throttled: Boolean,
+    // --- schemaVersion 2 (spec-sprint-2 FR-S2-8) ---
+    val sceneType: String? = null,
+    val sceneConfidence: Float = 0f,
+    val smilingProbability: Float? = null,
+    val pitchDeg: Float? = null,
+    val zoomRatio: Float = 1f,
+    val verticalFovDeg: Float? = null,
 ) {
     fun toMap(): Map<String, Any?> {
         val map = HashMap<String, Any?>()
@@ -66,6 +73,15 @@ data class FrameAnalysisPayload(
         exposure?.let { map["exposure"] = it.toMap() }
         if (inferenceLatencyMs.isNotEmpty()) map["inferenceLatencyMs"] = inferenceLatencyMs
         if (throttled) map["throttled"] = true
+        // v2 fields — chỉ gửi khi có giá trị (payload gọn, Dart parse optional)
+        sceneType?.let {
+            map["sceneType"] = it
+            map["sceneConfidence"] = sceneConfidence.toDouble()
+        }
+        smilingProbability?.let { map["smilingProbability"] = it.toDouble() }
+        pitchDeg?.let { map["pitchDeg"] = it.toDouble() }
+        map["zoomRatio"] = zoomRatio.toDouble()
+        verticalFovDeg?.let { map["verticalFovDeg"] = it.toDouble() }
         return map
     }
 

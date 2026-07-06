@@ -43,6 +43,22 @@ class MainActivity : FlutterActivity() {
                         )
                     }
                 }
+                "setZoom" -> {
+                    val ratio = (call.argument<Double>("ratio"))?.toFloat()
+                    if (ratio == null) {
+                        result.error("bad_args", "missing ratio", null)
+                    } else {
+                        result.success(ctrl.setZoom(ratio))
+                    }
+                }
+                "getZoomRange" -> {
+                    val range = ctrl.zoomRange()
+                    if (range == null) {
+                        result.success(null)
+                    } else {
+                        result.success(mapOf("min" to range.first, "max" to range.second))
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

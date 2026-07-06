@@ -57,6 +57,8 @@ dependencies {
     // ML Kit — object detection (subject fallback) + face detection
     implementation("com.google.mlkit:object-detection:17.0.2")
     implementation("com.google.mlkit:face-detection:16.1.7")
+    // ML Kit — image labeling (scene classifier, spec-sprint-2 FR-S2-2)
+    implementation("com.google.mlkit:image-labeling:17.0.9")
 }
 
 flutter {
