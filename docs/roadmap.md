@@ -74,9 +74,9 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 ### Phase 3: Sprint 3 — Backend + Monetization + Beta
 
 **Timeline:** 2026-08-04 → 2026-08-15
-**Status:** Not Started
+**Status:** Not Started — Spec: [spec-sprint-3.md](specs/spec-sprint-3.md)
 
-**Deliverables:**
+**Deliverables:** (chi tiết + thứ tự cắt scope: [spec-sprint-3.md](specs/spec-sprint-3.md))
 - [ ] NestJS API trên Cloud Run: auth magic link + JWT, user, photos, sync
 - [ ] Cloud AI review pipeline: BullMQ + `AiReviewProvider` (Claude + Gemini Flash, failover, Remote Config switch)
 - [ ] Credits server-side + Subscription (IAP verify; quyết định RevenueCat trước sprint)
@@ -195,3 +195,4 @@ Phase 1 ──────→ Phase 2 ──────→ Phase 3 ────
 | 2026-07-06 | Đạt Trần (swarm) | **Native inference module Android** (local — chưa push): CameraX (Preview+Analysis+Capture một owner) + MediaPipe pose GPU + ML Kit face + exposure sampler + horizon + thermal/rotation → EventChannel; Dart PlatformView preview + capture channel; **ADR-0007** (native sở hữu camera, giải xung đột với `camera` plugin). Verify thiết bị thật: preview + overlay chạy trên payload native, chụp OK, no crash. analyze 0 · test 80/80. iOS module còn nợ. |
 | 2026-07-06 | Đạt Trần (swarm) | **Benchmark gate PASS** (local — chưa push): nối `inferenceLatencyMs` từ payload native → PerfTracker qua `frameAnalysisStreamProvider`; PerfHud tự refresh + tô đỏ khi p90≥100ms. Đo trên Xiaomi Android 16: **frame→hint p90=10ms, p50=3ms**, pose p90≈40ms — gate <100ms PASS. Thêm 4 test (84/84). Sprint 2 spec: [spec-sprint-2.md](specs/spec-sprint-2.md). |
 | 2026-07-06 | Đạt Trần (swarm) | **Sprint 2 implement sớm (Android)** — 6 commit: schema v2, rule engine (pose/distance/angle), scene stability + zoom advisor + countdown state machine, Drift settings persist, native (ML Kit scene classifier + smile + pitch + zoom/FOV, verify thiết bị: scene=landscape conf=0.83, pitch=-87°, fov=64.5), UI (zoom chip/countdown/thermal/score "vì sao"). analyze 0 · test 126/126. Còn iOS + accuracy scene + user test. |
+| 2026-07-06 | Đạt Trần (swarm) | **Spec Sprint 3**: [spec-sprint-3.md](specs/spec-sprint-3.md) — auth magic link/JWT, upload signed URL, review pipeline BullMQ + adapter, credits server-side atomic + refund, subscription (RevenueCat — assumption chờ chốt), sync LWW, account deletion (App Store 5.1.1(v)), iOS native module (nợ Sprint 2), thứ tự cắt scope cố định (sync → iOS → feedback). |

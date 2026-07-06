@@ -1,9 +1,18 @@
 import { Module } from '@nestjs/common';
 
+import { PhotosController } from './photos.controller';
+import { PhotosService } from './photos.service';
+import { StorageService } from './storage.service';
+
 /**
- * PhotosModule — skeleton, implement o Sprint 3 (ADR-0002).
- * Photo metadata + signed URL upload GCS.
- * Xem docs/design/system-design-shotmate.md §3 Backend Components + §5 API Design.
+ * PhotosModule — photo metadata + signed URL upload GCS (spec FR-S3-2,
+ * ADR-0002). Exports PhotosService + StorageService: AnalysisModule needs
+ * PhotosService (ownership check) and StorageService (download image for
+ * the review worker).
  */
-@Module({})
+@Module({
+  controllers: [PhotosController],
+  providers: [PhotosService, StorageService],
+  exports: [PhotosService, StorageService],
+})
 export class PhotosModule {}

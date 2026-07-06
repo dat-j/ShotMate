@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
 
+import { CreditsService } from './credits.service';
+
 /**
- * CreditsModule — skeleton, implement o Sprint 3 (ADR-0002).
- * Enforce 10 review/ngay free, unlimited premium (server-side tu Sprint 3).
- * Xem docs/design/system-design-shotmate.md §3 Backend Components + §5 API Design.
+ * CreditsModule — enforce 10 review/ngày free, unlimited premium (spec
+ * FR-S3-4). Export CreditsService cho Users (/me) + Analysis (trừ/hoàn).
  */
-@Module({})
+@Module({
+  providers: [CreditsService],
+  exports: [CreditsService],
+})
 export class CreditsModule {}

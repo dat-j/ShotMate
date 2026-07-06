@@ -3,10 +3,16 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../auth/application/auth_state.dart';
+import '../../auth/application/auth_controller.dart';
 import '../../history/data/app_database.dart';
+import '../../review/application/review_controller.dart';
+import '../../review/application/review_state.dart';
+import '../../review/presentation/review_result_view.dart';
 import '../application/score_lookup_provider.dart';
 
 /// Score 4 chiều sau chụp (spec FR-S1-5).
@@ -42,14 +48,14 @@ class ScoreScreen extends ConsumerWidget {
   }
 }
 
-class _ScoreScreenBody extends StatelessWidget {
+class _ScoreScreenBody extends ConsumerWidget {
   const _ScoreScreenBody({required this.photo, required this.score});
 
   final Photo photo;
   final Score? score;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
@@ -65,6 +71,44 @@ class _ScoreScreenBody extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           if (score == null) const _QuotaExhaustedNotice() else _ScoreBreakdown(score: score!),
           if (score != null) _WhySection(captureMeta: photo.captureMeta),
+          if (score != null) _ReviewAiSection(photoId: photo.id),
+        ],
+      ),
+    );
+  }
+}
+
+/// Nút "Review AI ✨" + kết quả cloud (spec-sprint-3 FR-S3-3) — chỉ hiển thị
+/// khi đã có score offline (giữ nguyên offline score + "Vì sao" — spec
+/// "Keep existing offline score intact").
+class _ReviewAiSection extends ConsumerWidget {
+  const _ReviewAiSection({required this.photoId});
+
+  final String photoId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authStateProvider);
+    final isAuthenticated = authState is AuthAuthenticated;
+    final reviewState = ref.watch(reviewControllerProvider(photoId));
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ReviewAiButton(
+            photoId: photoId,
+            isAuthenticated: isAuthenticated,
+            onLoginPrompt: () => context.push('/login'),
+          ),
+          reviewState.when(
+            data: (value) => value is ReviewDone
+                ? ReviewResultView(result: value)
+                : const SizedBox.shrink(),
+            loading: () => const SizedBox.shrink(),
+            error: (error, stack) => const SizedBox.shrink(),
+          ),
         ],
       ),
     );

@@ -1,9 +1,16 @@
 import { Module } from '@nestjs/common';
 
+import { SubscriptionsController } from './subscriptions.controller';
+import { SubscriptionsService } from './subscriptions.service';
+
 /**
- * SubscriptionsModule — skeleton, implement o Sprint 3 (ADR-0002).
- * Verify IAP receipt Apple/Google.
- * Xem docs/design/system-design-shotmate.md §3 Backend Components + §5 API Design.
+ * SubscriptionsModule — webhook RevenueCat + verify fallback (spec FR-S3-5).
+ * Exports SubscriptionsService — reused by UsersModule (/me) declared locally
+ * there to avoid coupling across parallel workers (see users.module.ts).
  */
-@Module({})
+@Module({
+  controllers: [SubscriptionsController],
+  providers: [SubscriptionsService],
+  exports: [SubscriptionsService],
+})
 export class SubscriptionsModule {}

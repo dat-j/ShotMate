@@ -33,6 +33,14 @@ dependencies:
 
   uuid: ^4.5.1
 
+  # Auth token storage (Sprint 3 FR-S3-1) — Keychain/EncryptedSharedPreferences,
+  # KHÔNG Drift (token không phải "local storage nghiệp vụ" — spec-sprint-3
+  # Assumption FR-S3-1, không vi phạm ADR-0005).
+  flutter_secure_storage: ^9.2.2
+
+  # Deep link cho magic link auth (shotmate://auth/verify?token=...)
+  app_links: ^6.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
