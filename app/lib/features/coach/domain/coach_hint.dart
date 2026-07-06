@@ -31,13 +31,21 @@ class CoachHint {
 }
 
 class CoachState {
-  const CoachState({required this.hints, required this.compositionScore});
+  const CoachState({
+    required this.hints,
+    required this.compositionScore,
+    this.suggestedZoom,
+  });
 
   /// Đã qua prioritizer: tối đa 2, sort theo severity.
   final List<CoachHint> hints;
 
   /// [0,100] — rating sao = round(score/20), floor 1 (Business Rule 5).
   final int compositionScore;
+
+  /// Mức zoom gợi ý theo scene (spec-sprint-2 FR-S2-3). Null = không gợi ý
+  /// (zoom hiện tại đã hợp lý, hoặc scene chưa rõ).
+  final double? suggestedZoom;
 
   int get ratingStars {
     final stars = (compositionScore / 20).round();
