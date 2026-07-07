@@ -109,7 +109,12 @@ export class AnalysisService {
 
     return {
       reviewId: analysis.id,
-      status: analysis.status,
+      // DB lưu status lowercase (`queued`/`processing`/`done`/`failed`) —
+      // uppercase để khớp response `requestReview` (status: 'QUEUED') và
+      // hợp đồng API (ReviewResultView.status: QUEUED|PROCESSING|DONE|FAILED).
+      // Trước đây trả nguyên status lowercase khiến client (so sánh
+      // === 'DONE') không bao giờ nhận ra job đã xong, luôn timeout 90s.
+      status: analysis.status.toUpperCase(),
       provider: analysis.provider,
       createdAt: analysis.createdAt,
       ...(analysis.status === 'done'

@@ -172,7 +172,7 @@ describe('AnalysisService (spec FR-S3-3)', () => {
 
       expect(result).toEqual({
         reviewId: 'analysis-1',
-        status: 'done',
+        status: 'DONE',
         provider: 'claude',
         createdAt: new Date('2026-07-06T10:00:00.000Z'),
         scores: { composition: 90, lighting: 80, focus: 95, background: 70 },
@@ -195,7 +195,7 @@ describe('AnalysisService (spec FR-S3-3)', () => {
 
       expect(result).toEqual({
         reviewId: 'analysis-1',
-        status: 'queued',
+        status: 'QUEUED',
         provider: 'pending',
         createdAt: new Date('2026-07-06T10:00:00.000Z'),
       });
