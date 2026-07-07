@@ -2,6 +2,7 @@ import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { AuthUser, CurrentUser } from '../../common/auth/current-user.decorator';
+import { RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { AnalysisService, RequestReviewResult, ReviewResultView } from './analysis.service';
 
@@ -18,6 +19,8 @@ export class AnalysisController {
     private readonly config: ConfigService,
   ) {}
 
+  // FR-S4-4: 10/user/phút, cộng dồn với default authenticated 60/phút/user.
+  @RateLimit({ name: 'review-user', limit: 10, windowSeconds: 60, keyBy: 'user' })
   @Post()
   @HttpCode(202)
   async requestReview(

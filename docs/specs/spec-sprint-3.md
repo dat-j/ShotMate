@@ -447,6 +447,8 @@ Backend core + Android-first app wiring đã implement (swarm). Backend: build 0
 | D7 | **Integration test cần DB live** (EC-S3-1 race, EC-S3-2 refund, auth e2e) | Docker/Postgres/Redis không chạy được trên máy dev lần này | Chạy `docker compose up` rồi `prisma migrate dev` + viết integration test |
 | D8 | **iOS native module** (FR-S3-9), **RevenueCat SDK app + paywall thật** (FR-S3-5 app), **image resize isolate**, **Firebase** | Cần macOS host / store accounts / ngoài scope core | Theo Rule 10 thứ tự |
 
+> **Kế hoạch trả nợ:** toàn bộ D1–D8 + deploy + beta launch được đưa vào [spec-sprint-4.md](spec-sprint-4.md) (2026-07-07).
+
 **Môi trường:** backend cần **Node ≥ 20** (dùng Node 24 qua nvm; Node 16 mặc định KHÔNG chạy được NestJS 11). Prisma pin **v6** (v7 breaking). Flutter ở `F:\flutter`. Migration SQL sinh offline ở `prisma/migrations/20260706000000_sprint3_init/` (chưa apply — cần DB).
 
 ## Version History

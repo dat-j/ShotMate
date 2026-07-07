@@ -1,14 +1,16 @@
 /// `reviewControllerProvider` (spec-sprint-3 FR-S3-3 + "State Management") —
 /// state machine idle → uploading → queued → polling → done/failed.
 ///
-/// Flow (spec): resize ≤1568px (TODO — cần package `image`, ngoài scope run
-/// này) → upload-url → PUT file → enqueue review → poll `GET review` mỗi 2s
-/// tối đa 90s → done: persist Drift (`kind:'cloud'`) + expose result; 402 →
-/// failed('Hết lượt review...'); timeout → stillProcessing (EC-S3-13).
+/// Flow (spec): resize ≤1568px JPEG q85 trong isolate (spec FR-S3-2,
+/// FR-S4-9) → upload-url → PUT bytes đã resize → enqueue review → poll
+/// `GET review` mỗi 2s tối đa 90s → done: persist Drift (`kind:'cloud'`) +
+/// expose result; 402 → failed('Hết lượt review...'); timeout →
+/// stillProcessing (EC-S3-13).
 library;
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../history/data/analyses_repository.dart';
 import '../../history/data/photos_repository.dart';
 import '../data/review_repository.dart';
+import '../domain/image_resizer.dart';
 import '../domain/review_result.dart';
 import 'review_state.dart';
 
@@ -43,11 +46,20 @@ class ReviewController extends FamilyAsyncNotifier<ReviewState, String> {
       final reviewRepo = ref.read(reviewRepositoryProvider);
       const contentType = 'image/jpeg';
 
-      // TODO: resize <=1568px cạnh dài, JPEG q85 trong isolate (cần package
-      // `image`, ngoài scope run này — spec FR-S3-2). Hiện đọc bytes gốc.
       final file = File(photo.filePath);
       if (!file.existsSync()) {
         state = const AsyncData(ReviewState.failed('Không tìm thấy file ảnh'));
+        return;
+      }
+
+      // Resize ≤1568px cạnh dài, JPEG q85 trong isolate riêng — không block
+      // UI thread khi decode/resize ảnh lớn (spec FR-S3-2, FR-S4-9).
+      final originalBytes = await file.readAsBytes();
+      final Uint8List resizedBytes;
+      try {
+        resizedBytes = await resizeForUploadInIsolate(originalBytes);
+      } on FormatException {
+        state = const AsyncData(ReviewState.failed('Ảnh lỗi — không đọc được'));
         return;
       }
 
@@ -55,9 +67,9 @@ class ReviewController extends FamilyAsyncNotifier<ReviewState, String> {
         photoId: _photoId,
         contentType: contentType,
       );
-      await reviewRepo.uploadFile(
+      await reviewRepo.uploadBytes(
         uploadUrl: uploadUrlResult.uploadUrl,
-        file: file,
+        bytes: resizedBytes,
         contentType: contentType,
       );
 

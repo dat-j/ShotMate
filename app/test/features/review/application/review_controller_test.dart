@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:mocktail/mocktail.dart';
 import 'package:shotmate_app/core/di/database_provider.dart';
 import 'package:shotmate_app/features/history/data/app_database.dart';
@@ -24,7 +26,7 @@ void main() {
   late ProviderContainer container;
 
   setUpAll(() {
-    registerFallbackValue(File(''));
+    registerFallbackValue(Uint8List(0));
   });
 
   setUp(() async {
@@ -34,7 +36,10 @@ void main() {
 
     final photosRepo = PhotosRepository(db);
     final photoFile = File('${tempDir.path}/photo.jpg');
-    await photoFile.writeAsBytes([1, 2, 3]);
+    // Ảnh JPEG hợp lệ nhỏ (10x10) — resizeForUploadInIsolate cần decode
+    // được (spec FR-S3-2/FR-S4-9 resize trước upload).
+    final syntheticImage = img.Image(width: 10, height: 10);
+    await photoFile.writeAsBytes(img.encodeJpg(syntheticImage));
 
     photoId = await photosRepo.insertPhoto(
       filePath: photoFile.path,
@@ -75,9 +80,9 @@ void main() {
           storagePath: 'photos/u/p.jpg',
           expiresAt: '2026-07-06T00:15:00Z',
         ));
-    when(() => mockReviewRepo.uploadFile(
+    when(() => mockReviewRepo.uploadBytes(
           uploadUrl: any(named: 'uploadUrl'),
-          file: any(named: 'file'),
+          bytes: any(named: 'bytes'),
           contentType: any(named: 'contentType'),
         )).thenAnswer((_) async {});
     when(() => mockReviewRepo.enqueueReview(any())).thenAnswer(
@@ -120,9 +125,9 @@ void main() {
           storagePath: 'photos/u/p.jpg',
           expiresAt: '2026-07-06T00:15:00Z',
         ));
-    when(() => mockReviewRepo.uploadFile(
+    when(() => mockReviewRepo.uploadBytes(
           uploadUrl: any(named: 'uploadUrl'),
-          file: any(named: 'file'),
+          bytes: any(named: 'bytes'),
           contentType: any(named: 'contentType'),
         )).thenAnswer((_) async {});
     when(() => mockReviewRepo.enqueueReview(any())).thenThrow(

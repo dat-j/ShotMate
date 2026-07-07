@@ -6,13 +6,13 @@ import { PhotosModule } from '../photos/photos.module';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { AnalysisController } from './analysis.controller';
 import { AnalysisService } from './analysis.service';
-import { AnalysisWorker } from './analysis.worker';
 import { reviewQueueProvider } from './review.queue';
-import { ReviewProcessor } from './review.processor';
 
 /**
- * AnalysisModule — enqueue BullMQ review job, poll kết quả (spec FR-S3-3,
- * ADR-0002).
+ * AnalysisModule (API process) — enqueue BullMQ review job + poll kết quả
+ * (spec FR-S3-3, ADR-0002). KHÔNG consume job — `AnalysisWorker` chạy trong
+ * process riêng (`main.worker.ts`/`WorkerModule`, spec-sprint-4 FR-S4-2, trả
+ * nợ D2) để API scale-to-zero không làm chết consumer.
  *
  * SubscriptionsService được khai báo local (thay vì import
  * SubscriptionsModule) để tránh đụng độ với worker khác đang implement
@@ -22,12 +22,6 @@ import { ReviewProcessor } from './review.processor';
 @Module({
   imports: [CreditsModule, AiReviewModule, PhotosModule],
   controllers: [AnalysisController],
-  providers: [
-    AnalysisService,
-    ReviewProcessor,
-    AnalysisWorker,
-    SubscriptionsService,
-    reviewQueueProvider,
-  ],
+  providers: [AnalysisService, SubscriptionsService, reviewQueueProvider],
 })
 export class AnalysisModule {}

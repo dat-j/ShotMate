@@ -1,6 +1,7 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 
 import { Public } from '../../common/auth/public.decorator';
+import { RateLimit } from '../../common/rate-limit/rate-limit.decorator';
 import { AuthService, TokenPair, VerifyResult } from './auth.service';
 import { MagicLinkDto } from './dto/magic-link.dto';
 import { RefreshDto } from './dto/refresh.dto';
@@ -15,6 +16,11 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  // FR-S4-4: cả 2 điều kiện đều áp dụng — 3/email/15 phút VÀ 10/IP/giờ.
+  @RateLimit(
+    { name: 'magic-link-email', limit: 3, windowSeconds: 15 * 60, keyBy: 'email' },
+    { name: 'magic-link-ip', limit: 10, windowSeconds: 60 * 60, keyBy: 'ip' },
+  )
   @Post('magic-link')
   @HttpCode(202)
   async requestMagicLink(@Body() dto: MagicLinkDto): Promise<Record<string, never>> {

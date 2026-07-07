@@ -1,7 +1,7 @@
 /// Dio calls cho cloud review pipeline (spec-sprint-3 FR-S3-2, FR-S3-3).
 library;
 
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -66,14 +66,14 @@ class ReviewRepository {
     return UploadUrlResult.fromJson(response.data!);
   }
 
-  /// PUT bytes ảnh lên signed URL — dùng Dio riêng KHÔNG qua interceptor
-  /// auth (URL đã ký, GCS/minio không hiểu Authorization Bearer của app).
-  Future<void> uploadFile({
+  /// PUT bytes ảnh (đã resize ≤1568px cạnh dài, JPEG q85 — spec FR-S3-2,
+  /// FR-S4-9) lên signed URL — dùng Dio riêng KHÔNG qua interceptor auth
+  /// (URL đã ký, GCS/minio không hiểu Authorization Bearer của app).
+  Future<void> uploadBytes({
     required String uploadUrl,
-    required File file,
+    required Uint8List bytes,
     required String contentType,
   }) async {
-    final bytes = await file.readAsBytes();
     await Dio().put<void>(
       uploadUrl,
       data: bytes,

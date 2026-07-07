@@ -43,10 +43,21 @@ jobs:
       - run: flutter analyze
       - run: flutter test
 
-  # --- Sprint 3: bật các job dưới khi có GCP project + store accounts ---
+  # Build-only cho cả 2 target (api, worker) — xác nhận Dockerfile build được
+  # trong CI mà KHÔNG push/deploy (spec-sprint-4 FR-S4-1: chuẩn bị deploy-ready,
+  # không tự deploy vì chưa có GCP project/credentials thật).
+  docker-image:
+    runs-on: ubuntu-latest
+    needs: [backend]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target api    -t shotmate-api:ci    backend/
+      - run: docker build --target worker -t shotmate-worker:ci backend/
+
+  # --- Bật các job dưới khi có GCP project + store accounts (xem infra/DEPLOY.md) ---
   #
-  # docker-image:  build backend/Dockerfile, push Artifact Registry, tag theo version
-  # deploy-dev:    gcloud run deploy shotmate-api-dev (auto sau khi test pass trên main)
+  # deploy-dev:    push Artifact Registry + gcloud run deploy shotmate-api-dev/shotmate-worker-dev
+  #                (auto sau khi test pass trên main; auth qua GitHub OIDC — KHÔNG service account key)
   # deploy-staging: environment: staging (manual approval trong GitHub Environments)
   # deploy-prod:   environment: production (manual approval) + git tag
-  # app-release:   Fastlane → TestFlight / Play Internal (cần signing secrets)
+  # app-release:   Fastlane → Play Internal (Android-only beta — TestFlight dời sau, xem roadmap Phase 5)

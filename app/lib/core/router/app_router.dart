@@ -6,6 +6,7 @@ import '../../features/camera/presentation/camera_screen.dart';
 import '../../features/history/presentation/history_screen.dart';
 import '../../features/score/presentation/score_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/subscription/presentation/paywall_screen.dart';
 
 /// Routes theo spec-sprint-1 "Frontend Changes" (+ spec-sprint-3: `/login`,
 /// `/auth/verify`).
@@ -38,6 +39,9 @@ final appRouter = GoRouter(
             token: state.uri.queryParameters['token'],
           ),
         ),
+        // Paywall RevenueCat thật (spec-sprint-4 FR-S4-9) — điểm vào: CTA
+        // 402 hết credit (review_result_view.dart) + Settings.
+        GoRoute(path: 'paywall', builder: (_, __) => const PaywallScreen()),
       ],
     ),
   ],

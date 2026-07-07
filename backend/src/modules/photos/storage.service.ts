@@ -1,9 +1,13 @@
-import { createHmac } from 'node:crypto';
-
+import {
+  DeleteObjectsCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-
-import { AppError } from '../../common/http/http-error.filter';
 
 /**
  * StorageService contract — abstract away the cloud storage provider so the
@@ -20,61 +24,109 @@ export interface IStorageService {
   deletePrefix(prefix: string): Promise<void>;
 }
 
+const SUPPORTED_CONTENT_TYPE = 'image/jpeg';
+const MAX_LIST_KEYS_PER_BATCH = 1000; // S3 DeleteObjects hard limit per request
+
 /**
- * Placeholder StorageService — no cloud SDK installed yet (`@google-cloud/storage`
- * and `@aws-sdk` are intentionally NOT dependencies, spec constraint). Builds a
- * signed-URL-shaped response deterministically via HMAC(JWT_SECRET) so the
- * upload-url endpoint is fully testable without network access.
+ * StorageService — S3-compatible client (spec FR-S4-3, trả nợ D5).
  *
- * `getObjectBase64` / `deletePrefix` need an actual network round-trip to the
- * bucket — until the real client is wired they throw 503 STORAGE_UNAVAILABLE
- * (spec Availability: "Redis chết → ... API trả 503"; same posture applies to
- * storage backend not yet wired).
+ * Uses `@aws-sdk/client-s3` against minio locally (S3 API-compatible) and can
+ * point at any S3-compatible endpoint (GCS also exposes an S3-compatible XML
+ * API, but the canonical GCS driver is `@google-cloud/storage` — out of scope
+ * here; this class is the minio/local + S3-compatible driver named per the
+ * shared interface).
  *
- * // TODO: real GCS client (Sprint 3 deploy) — swap the body of createUploadUrl
- * // (V4 signed URL via @google-cloud/storage) and getObjectBase64/deletePrefix
- * // (bucket.file(...).download() / bucket.deleteFiles({prefix})) behind this
- * // same interface. Callers (PhotosService, ReviewProcessor, UsersService)
- * // depend only on the interface above.
+ * Bucket name is read from `GCS_BUCKET` (not `STORAGE_BUCKET`) intentionally:
+ * the env var name is kept stable across the minio (local/dev) and eventual
+ * GCS (prod) backends so switching providers later never requires renaming
+ * config — only swapping the client/credentials.
+ *
+ * Signing uses `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY` — a key pair
+ * dedicated to object storage, NEVER `JWT_SECRET` (finding L2, Sprint 3
+ * review: reusing the JWT signing secret to sign storage URLs would let a
+ * storage key leak compromise auth, and vice versa).
  */
 @Injectable()
 export class StorageService implements IStorageService {
-  constructor(private readonly config: ConfigService) {}
+  private readonly client: S3Client;
+  private readonly bucket: string;
 
-  createUploadUrl(
+  constructor(private readonly config: ConfigService) {
+    const endpoint = this.config.get<string>('STORAGE_ENDPOINT') || undefined;
+    const region = this.config.get<string>('STORAGE_REGION') ?? 'auto';
+    const accessKeyId = this.config.get<string>('STORAGE_ACCESS_KEY') ?? '';
+    const secretAccessKey = this.config.get<string>('STORAGE_SECRET_KEY') ?? '';
+
+    this.bucket = this.config.get<string>('GCS_BUCKET') ?? 'shotmate-photos-dev';
+
+    this.client = new S3Client({
+      endpoint,
+      region,
+      // minio (path-style buckets) needs forcePathStyle; harmless for GCS's
+      // S3-compatible endpoint (also path-style) if used that way later.
+      forcePathStyle: true,
+      credentials: { accessKeyId, secretAccessKey },
+    });
+  }
+
+  async createUploadUrl(
     objectPath: string,
     _contentType: string,
   ): Promise<{ uploadUrl: string; expiresAt: Date }> {
     const ttlSeconds = this.config.get<number>('SIGNED_URL_TTL_SECONDS') ?? 900;
-    const bucket = this.config.get<string>('GCS_BUCKET') ?? 'shotmate-photos-dev';
-    const endpoint =
-      this.config.get<string>('STORAGE_ENDPOINT') ?? 'https://storage.googleapis.com';
-    const secret = this.config.get<string>('JWT_SECRET') ?? 'dev-secret';
 
+    // Content-type is always image/jpeg here (PhotosService already rejects
+    // anything else with 400 UNSUPPORTED_CONTENT_TYPE before reaching this
+    // call) — the signed PUT is pinned to that type regardless of the
+    // caller-supplied value, so a signed URL can never be reused to upload a
+    // different content-type.
+    const command = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: objectPath,
+      ContentType: SUPPORTED_CONTENT_TYPE,
+    });
+
+    const uploadUrl = await getSignedUrl(this.client, command, { expiresIn: ttlSeconds });
     const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
-    const expiryEpoch = Math.floor(expiresAt.getTime() / 1000);
-    const sig = createHmac('sha256', secret)
-      .update(`${objectPath}:${expiryEpoch}`)
-      .digest('hex');
 
-    const uploadUrl = `${endpoint}/${bucket}/${objectPath}?X-Goog-Expires=${ttlSeconds}&X-Goog-Date=${expiryEpoch}&sig=${sig}`;
-
-    return Promise.resolve({ uploadUrl, expiresAt });
+    return { uploadUrl, expiresAt };
   }
 
-  getObjectBase64(_objectPath: string): Promise<string> {
-    throw new AppError(
-      503,
-      'STORAGE_UNAVAILABLE',
-      'Storage backend chưa được cấu hình (chờ GCS client Sprint 3 deploy)',
+  async getObjectBase64(objectPath: string): Promise<string> {
+    const result = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: objectPath }),
     );
+    const bytes = await result.Body?.transformToByteArray();
+    return Buffer.from(bytes ?? new Uint8Array()).toString('base64');
   }
 
-  deletePrefix(_prefix: string): Promise<void> {
-    throw new AppError(
-      503,
-      'STORAGE_UNAVAILABLE',
-      'Storage backend chưa được cấu hình (chờ GCS client Sprint 3 deploy)',
-    );
+  async deletePrefix(prefix: string): Promise<void> {
+    let continuationToken: string | undefined;
+
+    do {
+      const listed = await this.client.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        }),
+      );
+
+      const keys = (listed.Contents ?? [])
+        .map((obj) => obj.Key)
+        .filter((key): key is string => Boolean(key));
+
+      for (let i = 0; i < keys.length; i += MAX_LIST_KEYS_PER_BATCH) {
+        const batch = keys.slice(i, i + MAX_LIST_KEYS_PER_BATCH);
+        await this.client.send(
+          new DeleteObjectsCommand({
+            Bucket: this.bucket,
+            Delete: { Objects: batch.map((Key) => ({ Key })) },
+          }),
+        );
+      }
+
+      continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined;
+    } while (continuationToken);
   }
 }

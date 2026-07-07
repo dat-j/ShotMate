@@ -41,6 +41,19 @@ dependencies:
   # Deep link cho magic link auth (shotmate://auth/verify?token=...)
   app_links: ^6.3.0
 
+  # Monetization (Sprint 4 FR-S4-9) — RevenueCat SDK, PaywallScreen thật.
+  purchases_flutter: ^10.4.0
+
+  # Resize ảnh trước upload trong isolate (Sprint 4 FR-S4-9, spec FR-S3-2).
+  image: ^4.9.1
+
+  # Firebase Analytics/Crashlytics (Sprint 4 FR-S4-9) — init graceful nếu
+  # thiếu google-services.json/firebase_options.dart (chưa có Firebase
+  # project thật trong môi trường này; xem main.dart).
+  firebase_core: ^4.11.0
+  firebase_analytics: ^12.4.3
+  firebase_crashlytics: ^5.2.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -54,5 +67,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-# Firebase (Analytics/Crashlytics/Remote Config) thêm ở Sprint 1 sau khi
-# `flutterfire configure` — cần Firebase project trước.
+# Firebase Remote Config: chưa thêm — chưa có nhu cầu dùng trong sprint này.
+# `flutterfire configure` (sinh firebase_options.dart + google-services.json)
+# cần chạy khi có Firebase project thật (Sprint 4 FR-S4-9); tới lúc đó
+# `Firebase.initializeApp()` trong main.dart tiếp tục fail gracefully (catch
+# + log warning) như đã cài trong sprint này.

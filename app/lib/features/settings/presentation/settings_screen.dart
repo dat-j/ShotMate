@@ -90,6 +90,11 @@ class _AccountSection extends ConsumerWidget {
               title: Text(user.email.isEmpty ? 'Đã đăng nhập' : user.email),
             ),
             ListTile(
+              leading: const Icon(Icons.workspace_premium_outlined),
+              title: const Text('Nâng cấp Premium'),
+              onTap: () => context.push('/paywall'),
+            ),
+            ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Đăng xuất'),
               onTap: () => ref.read(authStateProvider.notifier).logout(),

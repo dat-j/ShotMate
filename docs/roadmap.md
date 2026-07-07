@@ -11,9 +11,11 @@ Related Skills: execution-roadmaps, decomposing-tasks, estimating-work, agile-me
 
 **Status:** Active
 **Owner:** Đạt Trần
-**Last Updated:** 2026-07-03 (Sprint 1 Dart layer hoàn thành)
+**Last Updated:** 2026-07-07 (Sprint 3 core implement sớm; thêm Phase 4 — Sprint 4 Beta Hardening + Launch)
 **Beads Issue:** N/A
-**Timeline:** 2026-07-07 → 2026-08-15 (MVP 3 sprint × 2 tuần) + V1–V4 sau beta
+**Timeline:** 2026-07-07 → 2026-08-15 (MVP 3 sprint × 2 tuần) + Sprint 4 hardening/beta + V1–V4 sau beta
+
+> **Pace thực tế:** Sprint 1–3 code core đã implement xong 2026-07-07 (sớm ~4–5 tuần so với lịch danh nghĩa). Lịch các phase dưới giữ nguyên làm mốc danh nghĩa; deadline cứng duy nhất là **beta 2026-08-15**.
 
 ## Vision
 
@@ -74,14 +76,15 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 ### Phase 3: Sprint 3 — Backend + Monetization + Beta
 
 **Timeline:** 2026-08-04 → 2026-08-15
-**Status:** Not Started — Spec: [spec-sprint-3.md](specs/spec-sprint-3.md)
+**Status:** In Progress — **code core implement sớm 2026-07-07** (commit `5c77b9d`): backend 61/61 test, app 132/132 test, cả hai quality gate xanh. Chưa deploy; nợ D1–D8 ghi trong [spec-sprint-3.md](specs/spec-sprint-3.md) §Implementation Notes → chuyển sang Phase 4.
 
 **Deliverables:** (chi tiết + thứ tự cắt scope: [spec-sprint-3.md](specs/spec-sprint-3.md))
-- [ ] NestJS API trên Cloud Run: auth magic link + JWT, user, photos, sync
-- [ ] Cloud AI review pipeline: BullMQ + `AiReviewProvider` (Claude + Gemini Flash, failover, Remote Config switch)
-- [ ] Credits server-side + Subscription (IAP verify; quyết định RevenueCat trước sprint)
-- [ ] Firebase Analytics dashboard + Crashlytics triage flow
-- [ ] Beta: TestFlight + Play Internal track, 50 testers
+- [x] NestJS API: auth magic link + JWT (rotation + reuse detection), users, photos (signed URL), sync LWW, feedback, DELETE /me — code + unit test xong; **chưa deploy Cloud Run** (Phase 4)
+- [x] Cloud AI review pipeline: BullMQ + `AiReviewProvider` (Claude + Gemini, failover, zod) — worker còn chạy in-process với API (D2, Phase 4)
+- [x] Credits server-side atomic + refund + Subscription qua RevenueCat webhook/verify — **app-side SDK + paywall thật chưa có** (D8, Phase 4)
+- [x] App wiring Android: features/auth + review (upload → enqueue → poll → Drift), secure storage, Dio interceptor refresh
+- [ ] Firebase Analytics dashboard + Crashlytics triage flow → Phase 4 (D8)
+- [ ] Beta: TestFlight + Play Internal track, 50 testers → Phase 4 (FR-S4-11)
 
 **Dependencies:** Phase 2 complete; Apple/Google dev accounts + GCP project sẵn sàng **trước** sprint
 
@@ -91,7 +94,30 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 
 ---
 
-### Phase 4+: Post-MVP (V1 → V4)
+### Phase 4: Sprint 4 — Beta Hardening + Launch (Android-only)
+
+**Timeline:** danh nghĩa 2026-08-18 → 2026-08-29; **thực tế bắt đầu ngay 2026-07-07** (pace sớm) — deadline cứng: beta 2026-08-15
+**Status:** In Progress — Spec: [spec-sprint-4.md](specs/spec-sprint-4.md)
+
+Không feature mới — biến code Sprint 3 thành hệ thống chạy thật (local/integration) + launch beta **Android-only**. **iOS cắt hoàn toàn khỏi phase này** (không macOS host/iPhone 12 sẵn sàng — dời sang Phase 5). **Deploy GCP thật cũng ngoài phạm vi thực thi** (không có gcloud/credentials trong môi trường thực thi) — chuẩn bị deploy-ready, chủ dự án tự chạy khi có GCP project.
+
+**Deliverables:** (chi tiết + thứ tự cắt scope: [spec-sprint-4.md](specs/spec-sprint-4.md))
+- [ ] Chuẩn bị deploy-ready: Dockerfile 2-target (api/worker), CI workflow gated, `infra/DEPLOY.md` hướng dẫn deploy Cloud Run thật (FR-S4-1)
+- [ ] Trả nợ D1–D7: rate limit Redis-backed đầy đủ, tách worker service, storage minio/GCS thật, webhook zod + route `GET /photos`, pino redact + helmet, integration test DB live (FR-S4-2..7)
+- [ ] App: RevenueCat SDK + paywall thật (wiring, sandbox cần account), resize isolate, Firebase Crashlytics/Analytics (wiring, cần project) (FR-S4-9)
+- [ ] Nợ Sprint 2: accuracy scene ≥85% (150 ảnh) + user test hint overload (FR-S4-10)
+- [ ] Beta launch Android-only: security audit, benchmark 50 ảnh + cost ≤$0.01 (cần API key thật), store submit Play Internal tuần 1, 50 testers (FR-S4-11)
+
+**Dependencies:** Phase 3 code (đã có); **API key thật** (Anthropic, Gemini) cho benchmark; RevenueCat account + Play Console product; Firebase project — hướng dẫn lấy các key/account này đã cung cấp cho Đạt (2026-07-07); GCP project + billing chỉ cần khi deploy thật (không chặn code sprint này)
+
+**Risks:**
+- Chưa có API key thật → benchmark/cost đo thật (FR-S4-11) chờ đến khi Đạt điền key vào `.env`
+- Store review chậm → submit trong tuần 1 (đã chốt trong spec)
+- Accuracy scene <85% → spike TFLite timebox 3 ngày (đường thoát ADR-0006), không chặn launch
+
+---
+
+### Phase 5+: Post-MVP (V1 → V4)
 
 **Timeline:** Sau beta, pace theo feedback
 **Status:** Planning
@@ -111,8 +137,9 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 |-----------|-------------|--------|-------|
 | Benchmark gate pass (<100ms) | 2026-07-11 | ✅ **Passed** 2026-07-06 | frame→hint **p90=10ms** (p50=3ms), pose p90≈40ms — đo trên Xiaomi Android 16 qua Perf HUD. Gấp ~10× dưới ngưỡng. Go. |
 | Sprint 1 done — app coach được composition | 2026-07-18 | In Progress | Dart layer + runner + native inference **Android** + benchmark gate PASS xong 2026-07-06 (thiết bị thật); còn iOS module + việc nhỏ §2.4 |
-| Sprint 2 done — full coaching offline | 2026-08-01 | In Progress | Logic + native Android xong sớm 2026-07-06 (pose/scene/zoom/distance/angle/countdown, 126 test); còn iOS + đo accuracy scene + user test |
-| Beta launch (TestFlight + Internal) | 2026-08-15 | Pending | |
+| Sprint 2 done — full coaching offline | 2026-08-01 | In Progress | Logic + native Android xong sớm 2026-07-06 (pose/scene/zoom/distance/angle/countdown, 126 test); còn iOS + đo accuracy scene + user test (→ Sprint 4 FR-S4-8/10) |
+| Sprint 3 done — backend + monetization code | 2026-08-15 | In Progress | Code core xong sớm 2026-07-07 (`5c77b9d`): backend 61 test, app 132 test. Còn deploy + nợ D1–D8 → Sprint 4 |
+| Beta launch (TestFlight + Internal) | 2026-08-15 | Pending | Beta gate = spec-sprint-4 Rule 2 (security audit, crash-free, benchmark, rate limit, integration test) |
 | Public launch quyết định sau beta | TBD | Pending | Dựa trên D7 retention + feedback |
 
 ## Resource Allocation
@@ -122,23 +149,27 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 | Phase 1 | 1 (Đạt) | 0.2 (Đạt) | 0.1 | kèm dev |
 | Phase 2 | 1 | 0.3 (UX hint là trọng tâm) | 0.1 | kèm dev |
 | Phase 3 | 1 | 0.1 | 0.2 (pricing/beta) | kèm dev |
+| Phase 4 | 1 | 0.1 (store listing) | 0.3 (beta ops/tuyển tester) | kèm dev + integration suite |
 
 > Solo dev — con số là tỷ trọng thời gian. Swarm workers (Claude Code) dùng để song song hoá: builder cho rule engine/backend module, reviewer cho security pass trước beta.
 
 ## Dependencies
 
 ```
-Phase 1 ──────→ Phase 2 ──────→ Phase 3 ──────→ V2/V3/V4
-   │                               ↑
-   └── Benchmark gate          Store accounts + GCP project
+Phase 1 ──────→ Phase 2 ──────→ Phase 3 ──────→ Phase 4 ──────→ V2/V3/V4
+   │                               ↑                ↑
+   └── Benchmark gate       Store accounts     GCP deploy + macOS host (iOS)
+                            + GCP project      + RevenueCat account
 ```
 
 | Dependency | Owner | Status | Risk Level |
 |------------|-------|--------|------------|
-| Thiết bị test tham chiếu (Pixel 6a, iPhone 12) | Đạt | Cần xác nhận | M |
-| Apple Developer + Play Console accounts | Đạt | Cần trước Phase 3 | M |
-| GCP project + billing | Đạt | Cần trước Phase 3 | L |
-| Claude + Gemini API keys | Đạt | Cần trước Phase 3 | L |
+| Thiết bị test tham chiếu (Pixel 6a, iPhone 12) | Đạt | Android có (Xiaomi thay Pixel); iPhone 12 chưa — chặn gate iOS (EC-S4-8) | M |
+| Apple Developer + Play Console accounts | Đạt | Cần trước Phase 4 tuần 1 (store submit) | M |
+| GCP project + billing | Đạt | Cần trước Phase 4 (FR-S4-1 deploy) | L |
+| Claude + Gemini API keys | Đạt | Cần trước Phase 4 (worker chạy thật) | L |
+| macOS host cho iOS build | Đạt | Chưa chốt — không có = cắt iOS khỏi beta (spec-sprint-4 Rule 3) | H |
+| RevenueCat account + webhook secret | Đạt | Cần trước FR-S4-9 | L |
 
 ## Risks & Mitigations
 
@@ -161,7 +192,7 @@ Phase 1 ──────→ Phase 2 ──────→ Phase 3 ────
 
 ### Launch Readiness (beta)
 
-- [ ] Toàn bộ acceptance criteria spec Sprint 1–2 pass
+- [ ] Toàn bộ acceptance criteria spec Sprint 1–4 pass (beta gate chi tiết: spec-sprint-4 Rule 2)
 - [ ] Benchmark <100ms + thermal 10 phút pass trên 2 thiết bị tham chiếu
 - [ ] Security checklist (`.claude/rules/security.md`) pass cho backend
 - [ ] Crash-free > 99.5% trong internal testing
@@ -180,8 +211,8 @@ Phase 1 ──────→ Phase 2 ──────→ Phase 3 ────
 
 - [PRD](prd/PRD-shotmate-mvp.md)
 - [System Design](design/system-design-shotmate.md)
-- [ADR 0001–0006](adr/)
-- [Spec Sprint 1](specs/spec-sprint-1.md)
+- [ADR 0001–0007](adr/)
+- [Spec Sprint 1](specs/spec-sprint-1.md) · [Spec Sprint 2](specs/spec-sprint-2.md) · [Spec Sprint 3](specs/spec-sprint-3.md) · [Spec Sprint 4](specs/spec-sprint-4.md)
 
 ---
 
@@ -196,3 +227,5 @@ Phase 1 ──────→ Phase 2 ──────→ Phase 3 ────
 | 2026-07-06 | Đạt Trần (swarm) | **Benchmark gate PASS** (local — chưa push): nối `inferenceLatencyMs` từ payload native → PerfTracker qua `frameAnalysisStreamProvider`; PerfHud tự refresh + tô đỏ khi p90≥100ms. Đo trên Xiaomi Android 16: **frame→hint p90=10ms, p50=3ms**, pose p90≈40ms — gate <100ms PASS. Thêm 4 test (84/84). Sprint 2 spec: [spec-sprint-2.md](specs/spec-sprint-2.md). |
 | 2026-07-06 | Đạt Trần (swarm) | **Sprint 2 implement sớm (Android)** — 6 commit: schema v2, rule engine (pose/distance/angle), scene stability + zoom advisor + countdown state machine, Drift settings persist, native (ML Kit scene classifier + smile + pitch + zoom/FOV, verify thiết bị: scene=landscape conf=0.83, pitch=-87°, fov=64.5), UI (zoom chip/countdown/thermal/score "vì sao"). analyze 0 · test 126/126. Còn iOS + accuracy scene + user test. |
 | 2026-07-06 | Đạt Trần (swarm) | **Spec Sprint 3**: [spec-sprint-3.md](specs/spec-sprint-3.md) — auth magic link/JWT, upload signed URL, review pipeline BullMQ + adapter, credits server-side atomic + refund, subscription (RevenueCat — assumption chờ chốt), sync LWW, account deletion (App Store 5.1.1(v)), iOS native module (nợ Sprint 2), thứ tự cắt scope cố định (sync → iOS → feedback). |
+| 2026-07-07 | Đạt Trần (swarm) | **Sprint 3 code core implement sớm** (commit `5c77b9d`): backend NestJS đầy đủ modules (auth/photos/analysis+worker/credits/subscriptions/sync/users/feedback/health) 61/61 test + lint 0; app Android wiring (features/auth + review, secure storage, Dio refresh interceptor) 132/132 test, analyze 0. Adversarial review + fixes áp (CWE-639 sync, EC-S3-3, refund atomic, ValidationPipe 422). Deviations D1–D8 ghi trong spec §Implementation Notes. Phase 3 → In Progress. |
+| 2026-07-07 | Đạt Trần (swarm) | **Thêm Phase 4 — Sprint 4 Beta Hardening + Deploy + Launch** + [spec-sprint-4.md](specs/spec-sprint-4.md): trả nợ D1–D8 (rate limit Redis, tách worker service, GCS/minio thật, webhook zod + `GET /photos`, pino/helmet/OTel, integration test DB live), iOS native module (gate iPhone 12), RevenueCat SDK + Firebase app-side, nợ Sprint 2 (accuracy scene 150 ảnh + user test hint), beta launch 50 testers. Post-MVP đổi thành Phase 5+. Verify local 2026-07-07: backend 61/61, app 132/132 (sau `npm install` + `build_runner` — 2 gate xanh). |

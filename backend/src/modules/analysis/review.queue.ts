@@ -1,6 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 
+import { parseRedisUrl } from '../../common/redis/parse-redis-url';
+
 /** DI token cho BullMQ Queue `ai-review` (spec FR-S3-3, Event Changes). */
 export const REVIEW_QUEUE = Symbol('REVIEW_QUEUE');
 
@@ -9,22 +11,12 @@ export interface ReviewJobPayload {
 }
 
 /**
- * Parse `redis://[:password@]host[:port][/db]` thành options object thay vì
- * dùng chuỗi `url` thẳng — bullmq bundle riêng một bản `ioredis` nested nên
- * truyền instance `IORedis` từ package top-level gây lỗi type identity
- * mismatch dù runtime tương thích. Object options (plain interface) tránh
- * vấn đề này hoàn toàn.
+ * Re-export — implementation chuyển vào `common/redis/parse-redis-url.ts`
+ * (dùng chung với `common/rate-limit`, FR-S4-4) để tránh `common` import
+ * ngược từ `modules`. Giữ export ở đây để không phá import hiện có
+ * (`analysis.worker.ts`, `token-cleanup.job.ts`).
  */
-export function parseRedisUrl(url: string): { host: string; port: number; password?: string; db?: number } {
-  const parsed = new URL(url);
-  const db = parsed.pathname && parsed.pathname !== '/' ? Number(parsed.pathname.slice(1)) : undefined;
-  return {
-    host: parsed.hostname || 'localhost',
-    port: parsed.port ? Number(parsed.port) : 6379,
-    ...(parsed.password ? { password: parsed.password } : {}),
-    ...(db !== undefined && !Number.isNaN(db) ? { db } : {}),
-  };
-}
+export { parseRedisUrl };
 
 /**
  * Provider factory — BullMQ `Queue` lazy-connects to Redis (no network call

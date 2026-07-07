@@ -1,3 +1,4 @@
+import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -5,6 +6,7 @@ import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
+import { Logger as PinoLogger } from 'nestjs-pino';
 
 import { AppModule } from './app.module';
 import { HttpErrorFilter } from './common/http/http-error.filter';
@@ -14,12 +16,24 @@ async function bootstrap(): Promise<void> {
     AppModule,
     // Body limit 1MB — ảnh KHÔNG đi qua API (chỉ signed URL); chặn payload lớn.
     new FastifyAdapter({ bodyLimit: 1024 * 1024 }),
+    // Buffer log trước khi Nest logger sẵn sàng — tránh mất log bootstrap.
+    { bufferLogs: true },
   );
+
+  // pino structured JSON logger (spec FR-S4-6) — thay Nest logger mặc định
+  // ở tầng framework/bootstrap. Logger service-layer (`new Logger(...)`
+  // trong auth.service.ts, analysis.service.ts...) không đổi.
+  app.useLogger(app.get(PinoLogger));
 
   app.setGlobalPrefix('api/v1');
 
-  // Rate limit theo IP (tầng ngoài Cloud Armor). Per-user/per-email limit
-  // enforce trong từng route (spec Rule 8).
+  // HTTP security headers (finding M1 review Sprint 3).
+  await app.register(helmet as never);
+
+  // Rate limit theo IP, in-memory per-instance (tầng ngoài Cloud Armor).
+  // KHÔNG phụ thuộc Redis — đây là lưới cuối khi Redis chết (EC-S4-1).
+  // Per-user/per-email limit (Redis-backed) enforce qua RateLimitGuard
+  // (spec FR-S4-4, common/rate-limit/).
   await app.register(rateLimit as never, {
     max: 300,
     timeWindow: '1 minute',

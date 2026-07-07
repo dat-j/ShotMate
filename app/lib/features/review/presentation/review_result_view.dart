@@ -5,6 +5,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_spacing.dart';
 import '../../auth/application/me_provider.dart';
@@ -15,6 +16,11 @@ const _providerLabels = {
   'claude': 'Claude',
   'gemini': 'Gemini',
 };
+
+/// Message chính xác từ `review_controller.dart._messageFor` khi 402
+/// `CREDITS_EXHAUSTED` — dùng để quyết định hiển thị CTA "Nâng cấp Premium"
+/// thay vì "Thử lại" (spec-sprint-4 FR-S4-9: điểm vào paywall từ CTA 402).
+const _creditsExhaustedMessage = 'Hết lượt review — nâng cấp';
 
 /// Nút kích hoạt review — vô hiệu hoá + gợi ý đăng nhập khi anonymous
 /// (Rule 1: review là tính năng cộng thêm, không chặn app).
@@ -112,17 +118,26 @@ class _RetryButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isCreditsExhausted = reason == _creditsExhaustedMessage;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(reason, style: const TextStyle(color: Colors.redAccent)),
         const SizedBox(height: AppSpacing.sm),
-        OutlinedButton.icon(
-          onPressed: () =>
-              ref.read(reviewControllerProvider(photoId).notifier).startReview(),
-          icon: const Icon(Icons.refresh),
-          label: const Text('Thử lại'),
-        ),
+        if (isCreditsExhausted)
+          FilledButton.icon(
+            onPressed: () => context.push('/paywall'),
+            icon: const Icon(Icons.workspace_premium_outlined),
+            label: const Text('Nâng cấp Premium'),
+          )
+        else
+          OutlinedButton.icon(
+            onPressed: () => ref
+                .read(reviewControllerProvider(photoId).notifier)
+                .startReview(),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Thử lại'),
+          ),
       ],
     );
   }

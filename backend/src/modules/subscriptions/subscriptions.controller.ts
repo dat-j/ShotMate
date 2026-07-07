@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Logger, Post } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { Public } from '../../common/auth/public.decorator';
@@ -8,7 +8,8 @@ import { AppError } from '../../common/http/http-error.filter';
 import {
   REVENUECAT_ACTIVE_EVENT_TYPES,
   REVENUECAT_INACTIVE_EVENT_TYPES,
-  RevenueCatWebhookBody,
+  RawRevenueCatWebhookBody,
+  revenueCatWebhookBodySchema,
 } from './dto/revenuecat-webhook.dto';
 import { VerifySubscriptionDto } from './dto/verify-subscription.dto';
 import { PlanStatus, SubscriptionsService } from './subscriptions.service';
@@ -19,6 +20,8 @@ import { PlanStatus, SubscriptionsService } from './subscriptions.service';
  */
 @Controller()
 export class SubscriptionsController {
+  private readonly logger = new Logger(SubscriptionsController.name);
+
   constructor(
     private readonly subscriptions: SubscriptionsService,
     private readonly config: ConfigService,
@@ -34,20 +37,28 @@ export class SubscriptionsController {
   @HttpCode(200)
   async handleWebhook(
     @Headers('authorization') authorization: string | undefined,
-    @Body() body: RevenueCatWebhookBody,
+    @Body() body: RawRevenueCatWebhookBody,
   ): Promise<Record<string, never>> {
+    // Secret check chạy trước và độc lập với validation payload — 401 ưu
+    // tiên hơn 422 nếu secret sai, tránh lộ thông tin qua timing/response
+    // khác nhau (security.md, spec FR-S4-5/D4).
     const secret = this.config.get<string>('REVENUECAT_WEBHOOK_SECRET');
     if (!secret || !authorization || !safeEqual(authorization, secret)) {
       throw new AppError(401, 'WEBHOOK_UNAUTHORIZED', 'Invalid webhook secret');
     }
 
-    const event = body?.event;
-    const appUserId = event?.app_user_id;
-    if (!event?.type || !appUserId) {
-      // Payload không đủ thông tin để xử lý — vẫn 200 (RevenueCat không
-      // cần retry cho event ShotMate không quan tâm), không upsert gì.
-      return {};
+    const parsed = revenueCatWebhookBodySchema.safeParse(body);
+    if (!parsed.success) {
+      // Không log toàn bộ payload (có thể chứa PII) — chỉ type (nếu có) +
+      // lý do lỗi zod.
+      this.logger.warn(
+        `RevenueCat webhook payload invalid type=${body?.event?.type ?? 'n/a'} reason=${parsed.error.issues.map((i) => `${i.path.join('.')}:${i.message}`).join('; ')}`,
+      );
+      throw new AppError(422, 'VALIDATION_FAILED', 'Invalid RevenueCat webhook payload');
     }
+
+    const { event } = parsed.data;
+    const appUserId = event.app_user_id;
 
     const isActive = REVENUECAT_ACTIVE_EVENT_TYPES.has(event.type);
     const isInactive = REVENUECAT_INACTIVE_EVENT_TYPES.has(event.type);
