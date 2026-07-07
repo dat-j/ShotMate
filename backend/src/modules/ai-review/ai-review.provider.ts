@@ -32,7 +32,7 @@ export interface ReviewContext {
 }
 
 export interface AiReviewProvider {
-  readonly name: 'claude' | 'gemini';
+  readonly name: 'claude' | 'gemini' | 'vertex';
 
   /**
    * @param imageBase64 ảnh JPEG đã resize ≤1568px cạnh dài (client làm)

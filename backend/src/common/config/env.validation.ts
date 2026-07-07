@@ -20,6 +20,12 @@ export const envSchema = z.object({
   CLAUDE_REVIEW_MODEL: z.string().default('claude-haiku-4-5'),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_REVIEW_MODEL: z.string().default('gemini-2.5-flash'),
+  // Vertex AI (fallback billing GCP project — tránh prepayment credit AI
+  // Studio dùng chung bởi GEMINI_API_KEY). ADC (service account Cloud Run),
+  // không cần API key.
+  VERTEX_PROJECT_ID: z.string().optional(),
+  VERTEX_LOCATION: z.string().default('us-central1'),
+  VERTEX_REVIEW_MODEL: z.string().default('gemini-2.5-flash'),
 
   // Storage (local: minio; prod: GCS)
   GCS_BUCKET: z.string().default('shotmate-photos-dev'),

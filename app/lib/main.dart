@@ -53,6 +53,14 @@ class _ShotMateAppState extends State<ShotMateApp> {
   @override
   void initState() {
     super.initState();
+    // Cold start (app bị kill, user bấm link trong email mở app từ đầu):
+    // `uriLinkStream` chỉ emit link đến sau khi listener đã gắn — bỏ lỡ intent
+    // khởi động app. Không đọc `getInitialLink()` khiến Android giao URI thô
+    // cho Flutter/GoRouter làm initial route và crash với GoException vì
+    // `shotmate://auth/verify?...` không khớp pattern route nào.
+    unawaited(_appLinks.getInitialLink().then((uri) {
+      if (uri != null) _handleDeepLink(uri);
+    }));
     _linkSubscription = _appLinks.uriLinkStream.listen(
       _handleDeepLink,
       onError: (Object _) {},

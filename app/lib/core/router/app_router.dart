@@ -16,6 +16,20 @@ import '../../features/subscription/presentation/paywall_screen.dart';
 /// dưới stack — back hệ thống pop về camera thay vì thoát app. (Route phẳng
 /// top-level khiến back thoát app.)
 final appRouter = GoRouter(
+  // Cold start qua deep link (`shotmate://auth/verify?token=...`, app bị
+  // kill): Android/Flutter giao nguyên URI đó làm initial route CHO GoRouter
+  // TRƯỚC KHI `AppLinks.getInitialLink()` (main.dart) kịp chạy — GoRouter cố
+  // match location bằng path pattern thường (`/auth/verify`) nên fail với
+  // GoException "no routes for location" trên toàn bộ URI có scheme. Redirect
+  // nó về path chuẩn để không phụ thuộc timing của app_links.
+  redirect: (context, state) {
+    final uri = state.uri;
+    if (uri.scheme == 'shotmate' && uri.host == 'auth' && uri.path == '/verify') {
+      return Uri(path: '/auth/verify', queryParameters: uri.queryParameters)
+          .toString();
+    }
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/',
