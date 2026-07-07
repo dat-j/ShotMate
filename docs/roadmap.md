@@ -11,7 +11,7 @@ Related Skills: execution-roadmaps, decomposing-tasks, estimating-work, agile-me
 
 **Status:** Active
 **Owner:** Đạt Trần
-**Last Updated:** 2026-07-07 (Sprint 3 core implement sớm; thêm Phase 4 — Sprint 4 Beta Hardening + Launch)
+**Last Updated:** 2026-07-07 (Sprint 4 code D1–D7 + FR-S4-9 xong; iOS + deploy GCP cắt khỏi scope thực thi)
 **Beads Issue:** N/A
 **Timeline:** 2026-07-07 → 2026-08-15 (MVP 3 sprint × 2 tuần) + Sprint 4 hardening/beta + V1–V4 sau beta
 
@@ -96,22 +96,22 @@ Mỗi lần người dùng mở camera, họ có một nhiếp ảnh gia AI đ�
 
 ### Phase 4: Sprint 4 — Beta Hardening + Launch (Android-only)
 
-**Timeline:** danh nghĩa 2026-08-18 → 2026-08-29; **thực tế bắt đầu ngay 2026-07-07** (pace sớm) — deadline cứng: beta 2026-08-15
-**Status:** In Progress — Spec: [spec-sprint-4.md](specs/spec-sprint-4.md)
+**Timeline:** danh nghĩa 2026-08-18 → 2026-08-29; **thực tế bắt đầu ngay 2026-07-07, code core xong cùng ngày** (pace sớm) — deadline cứng: beta 2026-08-15
+**Status:** In Progress — code (FR-S4-1..7, FR-S4-9) xong 2026-07-07 (swarm); còn phần cần account/thiết bị thật (FR-S4-10, FR-S4-11). Spec: [spec-sprint-4.md](specs/spec-sprint-4.md)
 
 Không feature mới — biến code Sprint 3 thành hệ thống chạy thật (local/integration) + launch beta **Android-only**. **iOS cắt hoàn toàn khỏi phase này** (không macOS host/iPhone 12 sẵn sàng — dời sang Phase 5). **Deploy GCP thật cũng ngoài phạm vi thực thi** (không có gcloud/credentials trong môi trường thực thi) — chuẩn bị deploy-ready, chủ dự án tự chạy khi có GCP project.
 
 **Deliverables:** (chi tiết + thứ tự cắt scope: [spec-sprint-4.md](specs/spec-sprint-4.md))
-- [ ] Chuẩn bị deploy-ready: Dockerfile 2-target (api/worker), CI workflow gated, `infra/DEPLOY.md` hướng dẫn deploy Cloud Run thật (FR-S4-1)
-- [ ] Trả nợ D1–D7: rate limit Redis-backed đầy đủ, tách worker service, storage minio/GCS thật, webhook zod + route `GET /photos`, pino redact + helmet, integration test DB live (FR-S4-2..7)
-- [ ] App: RevenueCat SDK + paywall thật (wiring, sandbox cần account), resize isolate, Firebase Crashlytics/Analytics (wiring, cần project) (FR-S4-9)
-- [ ] Nợ Sprint 2: accuracy scene ≥85% (150 ảnh) + user test hint overload (FR-S4-10)
+- [x] Chuẩn bị deploy-ready: Dockerfile 2-target (api/worker), CI workflow gated, `infra/DEPLOY.md` hướng dẫn deploy Cloud Run thật (FR-S4-1)
+- [x] Trả nợ D1–D7: rate limit Redis-backed đầy đủ, tách worker service, storage minio thật (S3 SDK), webhook zod + route `GET /photos`, pino redact + helmet, integration test DB live — **87 unit + 13 integration test, tất cả pass trên docker compose thật** (FR-S4-2..7)
+- [x] App: RevenueCat SDK + paywall thật (public key thật đã cấu hình `app/dart_defines.local.json`), resize isolate, Firebase init graceful (code xong, chờ Firebase project cho Analytics/Crashlytics thật) — **139/139 test** (FR-S4-9)
+- [ ] Nợ Sprint 2: accuracy scene ≥85% (150 ảnh) + user test hint overload (FR-S4-10) — cần ảnh/người test thật, ngoài phạm vi code
 - [ ] Beta launch Android-only: security audit, benchmark 50 ảnh + cost ≤$0.01 (cần API key thật), store submit Play Internal tuần 1, 50 testers (FR-S4-11)
 
-**Dependencies:** Phase 3 code (đã có); **API key thật** (Anthropic, Gemini) cho benchmark; RevenueCat account + Play Console product; Firebase project — hướng dẫn lấy các key/account này đã cung cấp cho Đạt (2026-07-07); GCP project + billing chỉ cần khi deploy thật (không chặn code sprint này)
+**Dependencies:** Phase 3 code (đã có); **API key thật** (Anthropic, Gemini) cho benchmark; **RevenueCat public key đã có** (2026-07-07), còn thiếu Play Console product `monthly` cho sandbox purchase thật; Firebase project; GCP project + billing chỉ cần khi deploy thật (không chặn code sprint này)
 
 **Risks:**
-- Chưa có API key thật → benchmark/cost đo thật (FR-S4-11) chờ đến khi Đạt điền key vào `.env`
+- Chưa có API key thật (Anthropic/Gemini) → benchmark/cost đo thật (FR-S4-11) chờ đến khi Đạt điền key vào `backend/.env`
 - Store review chậm → submit trong tuần 1 (đã chốt trong spec)
 - Accuracy scene <85% → spike TFLite timebox 3 ngày (đường thoát ADR-0006), không chặn launch
 
@@ -139,7 +139,8 @@ Không feature mới — biến code Sprint 3 thành hệ thống chạy thật 
 | Sprint 1 done — app coach được composition | 2026-07-18 | In Progress | Dart layer + runner + native inference **Android** + benchmark gate PASS xong 2026-07-06 (thiết bị thật); còn iOS module + việc nhỏ §2.4 |
 | Sprint 2 done — full coaching offline | 2026-08-01 | In Progress | Logic + native Android xong sớm 2026-07-06 (pose/scene/zoom/distance/angle/countdown, 126 test); còn iOS + đo accuracy scene + user test (→ Sprint 4 FR-S4-8/10) |
 | Sprint 3 done — backend + monetization code | 2026-08-15 | In Progress | Code core xong sớm 2026-07-07 (`5c77b9d`): backend 61 test, app 132 test. Còn deploy + nợ D1–D8 → Sprint 4 |
-| Beta launch (TestFlight + Internal) | 2026-08-15 | Pending | Beta gate = spec-sprint-4 Rule 2 (security audit, crash-free, benchmark, rate limit, integration test) |
+| Sprint 4 code (D1–D7, FR-S4-9) done | 2026-08-29 | In Progress | Code xong sớm 2026-07-07: backend 87 unit + 13 integration test (DB/Redis/minio/mailpit thật) pass; app 139 test. Còn FR-S4-10/11 cần account/ảnh/người test thật |
+| Beta launch (Play Internal, Android-only) | 2026-08-15 | Pending | Beta gate = spec-sprint-4 Rule 2 (security audit, crash-free, benchmark, rate limit, integration test) |
 | Public launch quyết định sau beta | TBD | Pending | Dựa trên D7 retention + feedback |
 
 ## Resource Allocation
@@ -229,3 +230,5 @@ Phase 1 ──────→ Phase 2 ──────→ Phase 3 ────
 | 2026-07-06 | Đạt Trần (swarm) | **Spec Sprint 3**: [spec-sprint-3.md](specs/spec-sprint-3.md) — auth magic link/JWT, upload signed URL, review pipeline BullMQ + adapter, credits server-side atomic + refund, subscription (RevenueCat — assumption chờ chốt), sync LWW, account deletion (App Store 5.1.1(v)), iOS native module (nợ Sprint 2), thứ tự cắt scope cố định (sync → iOS → feedback). |
 | 2026-07-07 | Đạt Trần (swarm) | **Sprint 3 code core implement sớm** (commit `5c77b9d`): backend NestJS đầy đủ modules (auth/photos/analysis+worker/credits/subscriptions/sync/users/feedback/health) 61/61 test + lint 0; app Android wiring (features/auth + review, secure storage, Dio refresh interceptor) 132/132 test, analyze 0. Adversarial review + fixes áp (CWE-639 sync, EC-S3-3, refund atomic, ValidationPipe 422). Deviations D1–D8 ghi trong spec §Implementation Notes. Phase 3 → In Progress. |
 | 2026-07-07 | Đạt Trần (swarm) | **Thêm Phase 4 — Sprint 4 Beta Hardening + Deploy + Launch** + [spec-sprint-4.md](specs/spec-sprint-4.md): trả nợ D1–D8 (rate limit Redis, tách worker service, GCS/minio thật, webhook zod + `GET /photos`, pino/helmet/OTel, integration test DB live), iOS native module (gate iPhone 12), RevenueCat SDK + Firebase app-side, nợ Sprint 2 (accuracy scene 150 ảnh + user test hint), beta launch 50 testers. Post-MVP đổi thành Phase 5+. Verify local 2026-07-07: backend 61/61, app 132/132 (sau `npm install` + `build_runner` — 2 gate xanh). |
+| 2026-07-07 | Đạt Trần (swarm) | **Cắt iOS + deploy GCP thật khỏi Sprint 4** (quyết định, không phải "cắt nếu trễ"): không có macOS host/iPhone 12/gcloud credentials trong môi trường thực thi. FR-S4-1 đổi thành chuẩn bị deploy-ready; FR-S4-8 dời sang Phase 5. |
+| 2026-07-07 | Đạt Trần (swarm) | **Sprint 4 D1–D7 + FR-S4-9 implement xong** (4 worker song song cho D1/D4/D5/D6 + orchestrator cho D2/D3/D7/FR-S4-1/app): backend **87 unit + 13 integration test pass thật** trên docker compose (postgres/redis/minio/mailpit) — auth e2e đầy đủ (magic-link→mailpit→verify→refresh rotation→reuse revoke), credit race EC-S3-1, refund EC-S3-2, sync conflict LWW EC-S3-6, DELETE /me EC-S3-11; lint 0 · build 0 lỗi. App: RevenueCat SDK + PaywallScreen + resize isolate + Firebase init graceful — **139/139 test**, analyze 0. **Bug hạ tầng test phát hiện + fix**: Vitest/esbuild không emit decorator metadata cho NestJS DI (tồn tại tiềm ẩn từ Sprint 3, lộ ra khi bootstrap `AppModule` thật lần đầu) — fix bằng `unplugin-swc` (giải pháp chính thức NestJS cho Vitest). RevenueCat Public SDK key thật đã cấu hình (`app/dart_defines.local.json`, gitignored). Còn nợ trước beta gate: deploy GCP thật, sandbox purchase (chờ Play Console product), Firebase project thật, benchmark 50 ảnh (chờ API key thật), accuracy scene + user test (FR-S4-10). |

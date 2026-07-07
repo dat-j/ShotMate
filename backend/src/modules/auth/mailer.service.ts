@@ -20,10 +20,16 @@ export class MailerService {
       this.config.get<string>('MAGIC_LINK_BASE_URL') ??
       'https://shotmate.app/auth/verify';
 
+    const user = this.config.get<string>('SMTP_USER');
+    const pass = this.config.get<string>('SMTP_PASSWORD');
+
     this.transporter = nodemailer.createTransport({
       host: this.config.get<string>('SMTP_HOST') ?? 'localhost',
       port: this.config.get<number>('SMTP_PORT') ?? 1025,
+      // local (mailpit) không cần auth; prod (Brevo) bắt buộc — chỉ set
+      // field `auth` khi có credentials để không phá luồng local hiện tại.
       secure: false,
+      ...(user && pass ? { auth: { user, pass } } : {}),
     });
   }
 
